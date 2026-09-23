@@ -1,1 +1,3 @@
-由於場地限制，還未完善後續内容。後續會進一步整理項目
+由於場地限制，還未完善後續内容。
+目前項目文件正在進一步整理
+現已提交上下位機的項目文件以及對應的支持包（分別是26H_Remake_RaspderryDJC、26H_Remake_DJC、26H_Remake_Raspderry_Support)
