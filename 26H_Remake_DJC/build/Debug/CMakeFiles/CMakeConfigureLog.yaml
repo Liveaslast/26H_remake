@@ -1,0 +1,426 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:200 (message)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      The target system is: Generic -  - arm
+      The host system is: Windows - 10.0.26200 - AMD64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" failed.
+      Compiler: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-gcc.exe 
+      Build flags: -mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections
+      Id flags:  
+      
+      The output was:
+      1
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-exit.o): in function `exit':
+      exit.c:(.text.exit+0x14): undefined reference to `_exit'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-closer.o): in function `_close_r':
+      closer.c:(.text._close_r+0xc): undefined reference to `_close'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-lseekr.o): in function `_lseek_r':
+      lseekr.c:(.text._lseek_r+0x14): undefined reference to `_lseek'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-readr.o): in function `_read_r':
+      readr.c:(.text._read_r+0x14): undefined reference to `_read'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-writer.o): in function `_write_r':
+      writer.c:(.text._write_r+0x14): undefined reference to `_write'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-sbrkr.o): in function `_sbrk_r':
+      sbrkr.c:(.text._sbrk_r+0xc): undefined reference to `_sbrk'
+      collect2.exe: error: ld returned 1 exit status
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-gcc.exe 
+      Build flags: -mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections
+      Id flags: -c 
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CMakeCCompilerId.o"
+      
+      The C compiler identification is GNU, found in:
+        D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/3.31.12/CompilerIdC/CMakeCCompilerId.o
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" failed.
+      Compiler: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-g++.exe 
+      Build flags: -mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-fno-rtti;-fno-exceptions;-fno-threadsafe-statics
+      Id flags:  
+      
+      The output was:
+      1
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-exit.o): in function `exit':
+      exit.c:(.text.exit+0x14): undefined reference to `_exit'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-closer.o): in function `_close_r':
+      closer.c:(.text._close_r+0xc): undefined reference to `_close'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-lseekr.o): in function `_lseek_r':
+      lseekr.c:(.text._lseek_r+0x14): undefined reference to `_lseek'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-readr.o): in function `_read_r':
+      readr.c:(.text._read_r+0x14): undefined reference to `_read'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-writer.o): in function `_write_r':
+      writer.c:(.text._write_r+0x14): undefined reference to `_write'
+      D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/ld.exe: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard\\libc.a(libc_a-sbrkr.o): in function `_sbrk_r':
+      sbrkr.c:(.text._sbrk_r+0xc): undefined reference to `_sbrk'
+      collect2.exe: error: ld returned 1 exit status
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-g++.exe 
+      Build flags: -mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-mcpu=cortex-m4;-mfpu=fpv4-sp-d16;-mfloat-abi=hard;-Wall;-fdata-sections;-ffunction-sections;-fno-rtti;-fno-exceptions;-fno-threadsafe-statics
+      Id flags: -c 
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CMakeCXXCompilerId.o"
+      
+      The CXX compiler identification is GNU, found in:
+        D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/3.31.12/CompilerIdCXX/CMakeCXXCompilerId.o
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-noyrvp"
+      binary: "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-noyrvp"
+    cmakeVariables:
+      CMAKE_C_FLAGS: " -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections"
+      CMAKE_C_FLAGS_DEBUG: "-O0 -g3"
+      CMAKE_EXE_LINKER_FLAGS: "-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -T \"D:/26H-remake/26H_Remake_DJC/STM32F407XX_FLASH.ld\" --specs=nano.specs -Wl,-Map=26H_Remake.map -Wl,--gc-sections -Wl,--print-memory-usage"
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-noyrvp'
+        
+        Run Build Command(s): D:/MCU-debug/MCU_TOOL/Ninjia/ninja.exe -v cmTC_9a5be
+        [1/2] D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR19DD~1.EXE   -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections  -std=gnu11   -v -o CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj -c D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR19DD~1.EXE
+        Target: arm-none-eabi
+        Configured with: /data/jenkins/workspace/GNU-toolchain/arm-13/src/gcc/configure --target=arm-none-eabi --prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install --with-gmp=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpfr=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpc=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-isl=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --disable-shared --disable-nls --disable-threads --disable-tls --enable-checking=release --enable-languages=c,c++,fortran --with-newlib --with-gnu-as --with-headers=yes --with-gnu-ld --with-native-system-header-dir=/include --with-sysroot=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/arm-none-eabi --with-multilib-list=aprofile,rmprofile --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --host=i686-w64-mingw32 --with-pkgversion='Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)' --with-bugurl=https://bugs.linaro.org/
+        Thread model: single
+        Supported LTO compression algorithms: zlib
+        gcc version 13.2.1 20231009 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/'
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/cc1.exe -quiet -v -imultilib thumb/v7e-m+fp/hard -iprefix D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/ -isysroot D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi -D__USES_INITFINI__ D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_9a5be.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -mlibarch=armv7e-m+fp -march=armv7e-m+fp -Wall -std=gnu11 -version -fdata-sections -ffunction-sections -o C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccZ9h4o2.s
+        GNU C11 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) version 13.2.1 20231009 (arm-none-eabi)
+        	compiled by GNU C version 9.3-win32 20200320, GMP version 6.2.1, MPFR version 3.1.6, MPC version 1.0.3, isl version isl-0.15-1-g835ea3a-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include"
+        ignoring nonexistent directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/lib/gcc/arm-none-eabi/13.2.1/../../../../include"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include-fixed"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include
+        End of search list.
+        Compiler executable checksum: cb09303cfa46f5ecbf59d9467eac8678
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/'
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/as.exe -v -march=armv7e-m+fp -mfloat-abi=hard -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mfpu=fpv4-sp-d16 -meabi=5 -o CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccZ9h4o2.s
+        GNU assembler version 2.41.0 (arm-none-eabi) using BFD version (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 2.41.0.20231009
+        COMPILER_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/
+        LIBRARY_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.'
+        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && D:\\MCU-debug\\MCU_TOOL\\bin\\cmake.exe -E rm -f libcmTC_9a5be.a && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\ARM-NO~2.EXE qc libcmTC_9a5be.a  CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR17F9~1.EXE libcmTC_9a5be.a && cd ."
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:182 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include]
+        end of search list found
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include]
+        implicit include dirs: [D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include;D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include-fixed;D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(arm-none-eabi-g\\+\\+\\.exe|;ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(arm-none-eabi-g\\+\\+\\.exe|;ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: 'D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-noyrvp']
+        ignore line: []
+        ignore line: [Run Build Command(s): D:/MCU-debug/MCU_TOOL/Ninjia/ninja.exe -v cmTC_9a5be]
+        ignore line: [[1/2] D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR19DD~1.EXE   -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections  -std=gnu11   -v -o CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj -c D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR19DD~1.EXE]
+        ignore line: [Target: arm-none-eabi]
+        ignore line: [Configured with: /data/jenkins/workspace/GNU-toolchain/arm-13/src/gcc/configure --target=arm-none-eabi --prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install --with-gmp=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpfr=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpc=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-isl=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --disable-shared --disable-nls --disable-threads --disable-tls --enable-checking=release --enable-languages=c,c++,fortran --with-newlib --with-gnu-as --with-headers=yes --with-gnu-ld --with-native-system-header-dir=/include --with-sysroot=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/arm-none-eabi --with-multilib-list=aprofile,rmprofile --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --host=i686-w64-mingw32 --with-pkgversion='Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)' --with-bugurl=https://bugs.linaro.org/]
+        ignore line: [Thread model: single]
+        ignore line: [Supported LTO compression algorithms: zlib]
+        ignore line: [gcc version 13.2.1 20231009 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/']
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/cc1.exe -quiet -v -imultilib thumb/v7e-m+fp/hard -iprefix D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/ -isysroot D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi -D__USES_INITFINI__ D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_9a5be.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -mlibarch=armv7e-m+fp -march=armv7e-m+fp -Wall -std=gnu11 -version -fdata-sections -ffunction-sections -o C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccZ9h4o2.s]
+        ignore line: [GNU C11 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) version 13.2.1 20231009 (arm-none-eabi)]
+        ignore line: [	compiled by GNU C version 9.3-win32 20200320  GMP version 6.2.1  MPFR version 3.1.6  MPC version 1.0.3  isl version isl-0.15-1-g835ea3a-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include"]
+        ignore line: [ignoring nonexistent directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/lib/gcc/arm-none-eabi/13.2.1/../../../../include"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include-fixed"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: cb09303cfa46f5ecbf59d9467eac8678]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/']
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/as.exe -v -march=armv7e-m+fp -mfloat-abi=hard -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mfpu=fpv4-sp-d16 -meabi=5 -o CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccZ9h4o2.s]
+        ignore line: [GNU assembler version 2.41.0 (arm-none-eabi) using BFD version (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 2.41.0.20231009]
+        ignore line: [COMPILER_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/]
+        ignore line: [LIBRARY_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-std=gnu11' '-v' '-o' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.']
+        ignore line: [[2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && D:\\MCU-debug\\MCU_TOOL\\bin\\cmake.exe -E rm -f libcmTC_9a5be.a && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\ARM-NO~2.EXE qc libcmTC_9a5be.a  CMakeFiles/cmTC_9a5be.dir/CMakeCCompilerABI.c.obj && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR17F9~1.EXE libcmTC_9a5be.a && cd ."]
+        ignore line: []
+        ignore line: []
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-hesst6"
+      binary: "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-hesst6"
+    cmakeVariables:
+      CMAKE_CXX_FLAGS: " -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -fno-threadsafe-statics"
+      CMAKE_CXX_FLAGS_DEBUG: "-O0 -g3"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: "-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -T \"D:/26H-remake/26H_Remake_DJC/STM32F407XX_FLASH.ld\" --specs=nano.specs -Wl,-Map=26H_Remake.map -Wl,--gc-sections -Wl,--print-memory-usage"
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-hesst6'
+        
+        Run Build Command(s): D:/MCU-debug/MCU_TOOL/Ninjia/ninja.exe -v cmTC_c7200
+        [1/2] D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR10B2~1.EXE   -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -fno-threadsafe-statics  -std=gnu++20   -v -o CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj -c D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp
+        Using built-in specs.
+        COLLECT_GCC=D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR10B2~1.EXE
+        Target: arm-none-eabi
+        Configured with: /data/jenkins/workspace/GNU-toolchain/arm-13/src/gcc/configure --target=arm-none-eabi --prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install --with-gmp=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpfr=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpc=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-isl=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --disable-shared --disable-nls --disable-threads --disable-tls --enable-checking=release --enable-languages=c,c++,fortran --with-newlib --with-gnu-as --with-headers=yes --with-gnu-ld --with-native-system-header-dir=/include --with-sysroot=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/arm-none-eabi --with-multilib-list=aprofile,rmprofile --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --host=i686-w64-mingw32 --with-pkgversion='Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)' --with-bugurl=https://bugs.linaro.org/
+        Thread model: single
+        Supported LTO compression algorithms: zlib
+        gcc version 13.2.1 20231009 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/'
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/cc1plus.exe -quiet -v -imultilib thumb/v7e-m+fp/hard -iprefix D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/ -isysroot D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi -D__USES_INITFINI__ D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_c7200.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -mlibarch=armv7e-m+fp -march=armv7e-m+fp -Wall -std=gnu++20 -version -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -fno-threadsafe-statics -o C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccAClAzy.s
+        GNU C++20 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) version 13.2.1 20231009 (arm-none-eabi)
+        	compiled by GNU C version 9.3-win32 20200320, GMP version 6.2.1, MPFR version 3.1.6, MPC version 1.0.3, isl version isl-0.15-1-g835ea3a-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include"
+        ignoring nonexistent directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/lib/gcc/arm-none-eabi/13.2.1/../../../../include"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include-fixed"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include"
+        ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include
+        End of search list.
+        Compiler executable checksum: a40e8addbeb3630b34e653a108e6a4b8
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/'
+         D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/as.exe -v -march=armv7e-m+fp -mfloat-abi=hard -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mfpu=fpv4-sp-d16 -meabi=5 -o CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccAClAzy.s
+        GNU assembler version 2.41.0 (arm-none-eabi) using BFD version (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 2.41.0.20231009
+        COMPILER_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/
+        LIBRARY_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/thumb/v7e-m+fp/hard/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/;D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/
+        COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.'
+        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && D:\\MCU-debug\\MCU_TOOL\\bin\\cmake.exe -E rm -f libcmTC_c7200.a && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\ARM-NO~2.EXE qc libcmTC_c7200.a  CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR17F9~1.EXE libcmTC_c7200.a && cd ."
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:182 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+          add: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include]
+        end of search list found
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1/backward]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+        collapse include dir [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include] ==> [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include]
+        implicit include dirs: [D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1;D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard;D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include/c++/13.2.1/backward;D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include;D:/MCU-debug/MCU_TOOL/13.2 Rel1/lib/gcc/arm-none-eabi/13.2.1/include-fixed;D:/MCU-debug/MCU_TOOL/13.2 Rel1/arm-none-eabi/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:30 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(arm-none-eabi-g\\+\\+\\.exe|;ld[0-9]*(\\.[a-z]+)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(arm-none-eabi-g\\+\\+\\.exe|;ld[0-9]*(\\.[a-z]+)?))("|,| |$)]
+        ignore line: [Change Dir: 'D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/CMakeScratch/TryCompile-hesst6']
+        ignore line: []
+        ignore line: [Run Build Command(s): D:/MCU-debug/MCU_TOOL/Ninjia/ninja.exe -v cmTC_c7200]
+        ignore line: [[1/2] D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR10B2~1.EXE   -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -fno-threadsafe-statics  -std=gnu++20   -v -o CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj -c D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR10B2~1.EXE]
+        ignore line: [Target: arm-none-eabi]
+        ignore line: [Configured with: /data/jenkins/workspace/GNU-toolchain/arm-13/src/gcc/configure --target=arm-none-eabi --prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install --with-gmp=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpfr=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-mpc=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --with-isl=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --disable-shared --disable-nls --disable-threads --disable-tls --enable-checking=release --enable-languages=c,c++,fortran --with-newlib --with-gnu-as --with-headers=yes --with-gnu-ld --with-native-system-header-dir=/include --with-sysroot=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/arm-none-eabi --with-multilib-list=aprofile,rmprofile --with-libiconv-prefix=/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/host-tools --host=i686-w64-mingw32 --with-pkgversion='Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)' --with-bugurl=https://bugs.linaro.org/]
+        ignore line: [Thread model: single]
+        ignore line: [Supported LTO compression algorithms: zlib]
+        ignore line: [gcc version 13.2.1 20231009 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/']
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/cc1plus.exe -quiet -v -imultilib thumb/v7e-m+fp/hard -iprefix D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/ -isysroot D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi -D__USES_INITFINI__ D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_c7200.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -mlibarch=armv7e-m+fp -march=armv7e-m+fp -Wall -std=gnu++20 -version -fdata-sections -ffunction-sections -fno-rtti -fno-exceptions -fno-threadsafe-statics -o C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccAClAzy.s]
+        ignore line: [GNU C++20 (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) version 13.2.1 20231009 (arm-none-eabi)]
+        ignore line: [	compiled by GNU C version 9.3-win32 20200320  GMP version 6.2.1  MPFR version 3.1.6  MPC version 1.0.3  isl version isl-0.15-1-g835ea3a-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include"]
+        ignore line: [ignoring nonexistent directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/data/jenkins/workspace/GNU-toolchain/arm-13/build-mingw-arm-none-eabi/install/lib/gcc/arm-none-eabi/13.2.1/../../../../include"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/include-fixed"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/lib/gcc/../../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include"]
+        ignore line: [ignoring duplicate directory "D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/arm-none-eabi/thumb/v7e-m+fp/hard]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include/c++/13.2.1/backward]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/include-fixed]
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: a40e8addbeb3630b34e653a108e6a4b8]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/']
+        ignore line: [ D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/as.exe -v -march=armv7e-m+fp -mfloat-abi=hard -mfloat-abi=hard -mfpu=fpv4-sp-d16 -mfpu=fpv4-sp-d16 -meabi=5 -o CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj C:\\Users\\2024R9~1\\AppData\\Local\\Temp\\ccAClAzy.s]
+        ignore line: [GNU assembler version 2.41.0 (arm-none-eabi) using BFD version (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 2.41.0.20231009]
+        ignore line: [COMPILER_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/arm-none-eabi/13.2.1/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../libexec/gcc/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/bin/]
+        ignore line: [LIBRARY_PATH=D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/thumb/v7e-m+fp/hard/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../lib/gcc/arm-none-eabi/13.2.1/../../../../arm-none-eabi/lib/]
+        ignore line: [D:/MCU-DE~1/MCU_TOOL/13C7F1~1.2RE/bin/../arm-none-eabi/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-mcpu=cortex-m4' '-mfpu=fpv4-sp-d16' '-mfloat-abi=hard' '-Wall' '-fdata-sections' '-ffunction-sections' '-fno-rtti' '-fno-exceptions' '-fno-threadsafe-statics' '-std=gnu++20' '-v' '-o' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj' '-c' '-mthumb' '-mlibarch=armv7e-m+fp' '-march=armv7e-m+fp' '-dumpdir' 'CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [[2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && D:\\MCU-debug\\MCU_TOOL\\bin\\cmake.exe -E rm -f libcmTC_c7200.a && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\ARM-NO~2.EXE qc libcmTC_c7200.a  CMakeFiles/cmTC_c7200.dir/CMakeCXXCompilerABI.cpp.obj && D:\\MCU-DE~1\\MCU_TOOL\\13C7F1~1.2RE\\bin\\AR17F9~1.EXE libcmTC_c7200.a && cd ."]
+        ignore line: []
+        ignore line: []
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:1238 (message)"
+      - "D:/MCU-debug/MCU_TOOL/share/cmake-3.31/Modules/CMakeDetermineASMCompiler.cmake:135 (CMAKE_DETERMINE_COMPILER_ID_VENDOR)"
+      - "CMakeLists.txt:34 (enable_language)"
+    message: |
+      Checking whether the ASM compiler is GNU using "--version" matched "(GNU assembler)|(GCC)|(Free Software Foundation)":
+      arm-none-eabi-gcc.exe (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 13.2.1 20231009
+      Copyright (C) 2023 Free Software Foundation, Inc.
+      This is free software; see the source for copying conditions.  There is NO
+      warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+      
+...

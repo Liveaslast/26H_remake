@@ -1,0 +1,275 @@
+# H题车载平衡滚球统一参数文件
+#
+# 加载优先级：本文件默认值 < --config 指定的自定义文件 < 命令行显式参数。
+# 自定义文件可以只写需要覆盖的分组/参数。文件内相对路径以该文件所在目录为基准。
+#
+# 安全约束：enable_balance_control 和 clear_estop 故意不能写进配置文件；
+# 真机使能执行器时必须在每次启动命令中同时显式给出这两个开关。
+
+version = 1
+
+[vision_geometry]
+# 相机仍采集完整1280x720；所有标定、采集和推理共享同一固定粗ROI。
+source_roi_x = 129
+source_roi_y = 422
+source_roi_width = 1143
+source_roi_height = 124
+
+[tracking]
+# NCNN模型目录。矩形模型尺寸默认从metadata.yaml读取，image_size=0表示自动读取。
+model = "../model/ncnn_model"
+image_size = 0
+# 正式模型必须与采集/训练的矩形输入一致。
+model_width = 640
+model_height = 128
+
+# YOLO候选置信度与NMS交并比阈值，范围均为0..1。
+confidence = 0.25
+iou = 0.70
+max_detections = 5
+
+# USB相机固定模式；标定和运行时分辨率必须一致。
+camera = "/dev/video0"
+width = 1280
+height = 720
+fps = 60.0
+camera_fourcc = "MJPG"
+# OpenCV采集缓冲。树莓派当前相机实测2可保持约60fps，1会降到约30fps。
+camera_buffer_size = 2
+# 等待最新完整帧的超时；相机掉线时在此时间内进入安全失败。
+camera_read_timeout_ms = 500.0
+# false会主动设置exposure_dynamic_framerate=0，避免自动曝光偷降帧率。
+allow_dynamic_framerate = false
+# UVC units are 100us. 10 = 1ms, matching the exp10 dataset/model.
+exposure_time_absolute = 10
+warmup_frames = 20
+
+# 0表示一直运行；report_period是终端状态输出周期，单位秒。
+duration = 0.0
+report_period = 0.20
+no_display = false
+
+[detector]
+# 默认使用树莓派 Hailo AI HAT 的原生 HailoRT 后端；需要回退时可在命令行传
+# --inference-backend ncnn。
+inference_backend = "hailort"
+hailo_model = "hailo_model"
+ncnn_backend = "auto"
+ncnn_threads = 2
+# precision精度优先；balanced/performance必须用动态录像对比后再启用。
+speed_mode = "precision"
+# 每N帧做一次模型检测；HAT/HailoRT速度足够时保持1，表示每帧检测。
+detection_interval = 1
+# HailoRT首次推理可能需要较久；实车启动默认跳过预热，避免开机长时间无响应。
+skip_detector_warmup = true
+# 0使用speed_mode预设；非0时指定圆拟合重新计算间隔。
+refine_interval = 0
+# 光流图像缩放比例(0,1]；1000x200展开ROI先保持1.0。
+track_scale = 1.0
+
+[tracker]
+# 位置测量中心来源：bbox使用YOLO框中心；refined使用RANSAC/缓存圆心。
+measurement_center = "bbox"
+# 丢球100ms后结果失效并禁止继续加速；500ms后重置滤波器。
+maximum_lost_ms = 100.0
+reset_after_ms = 500.0
+confirmation_hits = 2
+# 数据关联门限与物理范围外扩，单位cm。
+association_gate_cm = 3.5
+physical_range_margin_cm = 1.5
+# 有效检测中心在展开ROI高度方向的允许比例。
+vertical_band_min = 0.08
+vertical_band_max = 0.92
+# 圆半径过滤：最小像素半径、最大半径/ROI高度比例。
+minimum_radius_px = 2.0
+# Measured ball radius is 41..43px in the 200px-high rectified ROI.
+# 0.20 meant a 40px cap and rejected the real ball during motion.
+maximum_radius_height_ratio = 0.30
+# 卡尔曼过程加速度标准差，越大越跟手但速度噪声更大，单位cm/s^2。
+process_acceleration_std_cm_s2 = 40.0
+# 滤波初始化不确定度和预测时间步长范围。
+kalman_initial_position_std_cm = 0.20
+kalman_initial_velocity_std_cm_s = 20.0
+kalman_minimum_dt_ms = 0.1
+kalman_maximum_dt_ms = 100.0
+# RANSAC圆心和YOLO框中心的测量标准差，单位cm。
+ransac_measurement_std_cm = 0.08
+yolo_measurement_std_cm = 0.18
+# 候选评分 = confidence + 圆拟合加分 - 预测距离惩罚。
+refinement_score_bonus = 0.08
+association_distance_penalty = 0.20
+# 输出速度低通时间常数，单位ms；0关闭。只影响输出，不影响卡尔曼内部预测。
+velocity_lowpass_tau_ms = 0.0
+
+[control]
+# 仅供人工角度仿真调试；正式入口不加载本节，真实控制参数位于MCU。
+# 仿真位置外环：theta = Kp*(target-x) - Kd*vx + Ki*integral(error)。
+target_position_cm = 0.0
+control_kp = 0.0
+control_kd = 0.0
+control_ki = 0.0
+# 目标角限幅、正常变化率、视觉失效回零变化率。
+maximum_target_angle_deg = 5.0
+maximum_target_slew_deg_s = 30.0
+invalid_return_deg_s = 15.0
+# 积分状态绝对限幅，单位cm*s；Ki为0时仍建议保留有限值。
+integral_limit_cm_s = 20.0
+# 控制器单步dt上限，防止暂停后第一帧产生角度突跳。
+maximum_control_step_ms = 100.0
+
+[debug]
+# 调试页只镜像数据，不参与闭环控制。
+debug_page = false
+debug_host = "0.0.0.0"
+debug_port = 8000
+debug_max_points = 1000
+
+[formal_tracking]
+calibration = "calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json"
+# Current Bluetooth transparent serial link is connected through a CH340/CH341
+# USB-TTL adapter, which enumerates as /dev/ttyUSB0 on the Raspberry Pi.
+port = "/dev/ttyUSB0"
+baudrate = 115200
+connect_timeout = 5.0
+# 相机帧时间与actual_angle_deg遥测的最大容许时间差。
+maximum_angle_age_ms = 100.0
+# 曝光中心到VideoCapture.read返回的估计延迟；需用动态录像实测校准。
+camera_latency_ms = 16.7
+# 角度重力运动模型增益；0关闭，坐标正负未确认前必须保持0。
+gravity_model_gain = 0.0
+# MSPM0链路时序，单位ms；request_period_ms=20对应50Hz请求。
+telemetry_request_period_ms = 20.0
+telemetry_link_timeout_ms = 250.0
+serial_read_timeout_ms = 1.0
+serial_write_timeout_ms = 100.0
+# 独立发送线程固定频率；视觉线程只覆盖最新[x,vx]，不等待串口。
+ball_state_send_rate_hz = 100.0
+# 发给MSPM0前默认不再做位置整形；sent_x_cm直接使用本帧原始视觉测量位置。
+ball_position_lowpass_tau_ms = 0.0
+ball_position_median_window = 1
+ball_position_deadband_cm = 0.0
+ball_position_slew_limit_cm_s = 0.0
+ball_position_jump_threshold_cm = 0.0
+ball_position_jump_confirm_ms = 0.0
+ball_ignore_zero_position_cm = 0.0
+ball_velocity_lowpass_tau_ms = 0.0
+ball_velocity_deadband_cm_s = 0.0
+heartbeat_period_ms = 100.0
+reconnect_period_ms = 500.0
+angle_history_samples = 256
+
+[manual_angle_tracking]
+# 人工角度模式永远不连接串口或使能执行器。
+calibration = "calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json"
+angle_deg = 0.0
+angle_step = 0.25
+
+[calibration]
+# 多角度标定采样点；必须严格递增。字符串格式与同名命令行参数一致。
+angles = "-12,-9,-6,-3,0,3,6,9,12"
+positions = "-10,-5,0,5,10"
+# 白轨道全长加上下安全像素，展开比例与640x128模型输入一致。
+rectified_width = 1000
+rectified_height = 200
+rod_length_cm = 25.0
+groove_width_cm = 1.3
+# 超出标定角范围超过此余量即判展开无效，单位deg。
+maximum_angle_margin = 0.35
+camera = "/dev/video0"
+width = 1280
+height = 720
+fps = 60.0
+camera_fourcc = "MJPG"
+camera_buffer_size = 2
+camera_read_timeout_ms = 500.0
+allow_dynamic_framerate = false
+exposure_time_absolute = 20
+warmup_frames = 20
+max_display_width = 1400
+max_display_height = 820
+
+[formal_calibration]
+output_dir = "calibration_output/roi_128x640"
+angle_tolerance = 0.50
+stable_window = 0.35
+stable_std = 0.08
+# 稳定窗口内有效遥测覆盖比例，范围(0,1]。
+stable_window_fill_ratio = 0.75
+maximum_angle_age_ms = 100.0
+port = "/dev/serial0"
+baudrate = 115200
+connect_timeout = 5.0
+# 标定同样从actual_angle_deg遥测取角度，串口时序可独立于正式运行整定。
+telemetry_request_period_ms = 20.0
+telemetry_link_timeout_ms = 250.0
+serial_read_timeout_ms = 10.0
+serial_write_timeout_ms = 100.0
+heartbeat_period_ms = 100.0
+reconnect_period_ms = 500.0
+angle_history_samples = 256
+
+[manual_angle_calibration]
+output_dir = "calibration_data/manual_angle_output/roi_128x640"
+minimum_settle_seconds = 1.0
+
+[roi_capture]
+calibration = "calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json"
+output_dir = "dataset_capture/roi_128x640"
+prefix = "roi"
+model_width = 640
+model_height = 128
+padding_value = 114
+angle_deg = 0.0
+angle_step = 0.25
+camera = "/dev/video0"
+width = 1280
+height = 720
+fps = 60.0
+camera_fourcc = "MJPG"
+camera_buffer_size = 2
+camera_read_timeout_ms = 500.0
+allow_dynamic_framerate = false
+exposure_time_absolute = 20
+warmup_frames = 20
+capture_fps = 5.0
+# 每次按C自动采集的未标注图片数量；0表示再次按C前一直拍摄。
+auto_burst_samples = 0
+auto_capture = false
+duration = 0.0
+max_samples = 0
+source_jpeg_quality = 95
+png_compression = 3
+no_save_source = false
+annotation_scale = 2.0
+no_display = false
+
+[training]
+# Windows离线训练参数，不会在树莓派闭环进程中加载。
+data = "train/datasets/roi_ball_128x640/roi_ball.yaml"
+model = "../../yolo26n.pt"
+epochs = 200
+batch = 8
+imgsz = 640
+device = "auto"
+workers = 0
+patience = 50
+seed = 42
+project = "../model/runs"
+name = "roi_128x640"
+cache = "ram"
+
+[dataset_prepare]
+output_dir = "train/datasets/roi_ball_128x640"
+width = 640
+height = 128
+val_fraction = 0.20
+seed = 42
+split_mode = "image"
+
+[ncnn_export]
+model = "../model/best.pt"
+height = 128
+width = 640
+output_dir = "../model"
+name = "ncnn_model"
+device = "cpu"

@@ -1,0 +1,35 @@
+{
+    "configurations": [
+        {
+            "name": "STM32F407",
+            "compileCommands": [
+                "${workspaceFolder}/build/Debug/compile_commands.json"
+            ],
+            "compilerPath": "D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-g++.exe",
+            "intelliSenseMode": "gcc-arm",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "defines": [
+                "USE_HAL_DRIVER",
+                "STM32F407xx",
+                "DEBUG"
+            ],
+            "includePath": [
+                "${workspaceFolder}/Hardware/**",
+                "${workspaceFolder}/Devices",
+                "${workspaceFolder}/APP",
+                "${workspaceFolder}/Core/Inc",
+                "${workspaceFolder}/Drivers/STM32F4xx_HAL_Driver/Inc",
+                "${workspaceFolder}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy",
+                "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/include",
+                "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2",
+                "${workspaceFolder}/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F",
+                "${workspaceFolder}/Drivers/CMSIS/Device/ST/STM32F4xx/Include",
+                "${workspaceFolder}/Drivers/CMSIS/Include",
+                "${workspaceFolder}/UserLib",
+                "${workspaceFolder}/Hardware"
+            ]
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,156 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #081016;
+  color: #e7f2f2;
+  --panel: rgba(17, 31, 39, 0.86);
+  --border: rgba(151, 188, 192, 0.15);
+  --muted: #8ea3a6;
+  --accent: #58e0c1;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% -10%, rgba(47, 180, 165, 0.16), transparent 35%),
+    radial-gradient(circle at 100% 0%, rgba(73, 104, 190, 0.13), transparent 30%),
+    #081016;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(20px, 4vw, 64px) 18px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--accent);
+  font: 700 11px/1 monospace;
+  letter-spacing: 0.18em;
+}
+
+h1 { margin: 0; font-size: clamp(25px, 3vw, 38px); letter-spacing: -0.03em; }
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(8, 16, 22, 0.72);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #d46a69; }
+.connection.online .dot { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+
+main { padding: 0 clamp(20px, 4vw, 64px) 48px; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(13, 25, 32, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.toolbar-group, .toolbar-actions { display: flex; align-items: center; gap: 10px; }
+label { color: var(--muted); font-size: 13px; }
+
+button, select {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #15252e;
+  color: #e7f2f2;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover, select:hover { border-color: rgba(88, 224, 193, 0.48); }
+button.danger { color: #ffaaa3; }
+button.active { color: #07120f; background: var(--accent); }
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  gap: 18px;
+}
+
+.chart-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: var(--panel);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.chart-header, .chart-stats, .metric-title-row {
+  display: flex;
+  align-items: center;
+}
+
+.chart-header { justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+.metric-title-row { min-width: 0; gap: 9px; }
+.color-mark { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; }
+.metric-name { overflow: hidden; margin: 0; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.latest-value { font: 650 22px/1.1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+.chart { display: block; width: 100%; height: 220px; }
+
+.chart-stats {
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chart-stats b { color: #c9d7d8; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+.empty-state {
+  display: grid;
+  min-height: 48vh;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-state h2 { margin: 18px 0 4px; color: #dceaea; }
+.empty-state p { margin: 0; }
+.empty-state code { color: var(--accent); }
+.empty-state.hidden { display: none; }
+
+.signal-icon { display: flex; align-items: end; gap: 5px; height: 34px; }
+.signal-icon span { width: 5px; border-radius: 4px; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.signal-icon span:nth-child(1) { height: 12px; }
+.signal-icon span:nth-child(2) { height: 24px; animation-delay: .15s; }
+.signal-icon span:nth-child(3) { height: 34px; animation-delay: .3s; }
+
+@keyframes pulse { 50% { opacity: .25; transform: scaleY(.75); } }
+
+@media (max-width: 620px) {
+  .topbar, .toolbar { align-items: flex-start; }
+  .topbar { padding-top: 22px; }
+  .toolbar { flex-direction: column; }
+  .toolbar-actions { width: 100%; }
+  .toolbar-actions button { flex: 1; }
+  .connection { margin-top: 4px; }
+  .chart { height: 190px; }
+}

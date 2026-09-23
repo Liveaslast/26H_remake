@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">LIVE TELEMETRY</p>
+      <h1>{{ title }}</h1>
+    </div>
+    <div id="connection" class="connection offline">
+      <span class="dot"></span>
+      <span id="connectionText">正在连接</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="toolbar" aria-label="曲线控制">
+      <div class="toolbar-group">
+        <label for="timeWindow">显示窗口</label>
+        <select id="timeWindow">
+          <option value="10">最近 10 秒</option>
+          <option value="30" selected>最近 30 秒</option>
+          <option value="60">最近 60 秒</option>
+          <option value="0">全部数据</option>
+        </select>
+      </div>
+      <div class="toolbar-actions">
+        <button id="pauseButton" type="button">暂停</button>
+        <button id="clearButton" class="danger" type="button">清空</button>
+      </div>
+    </section>
+
+    <section id="emptyState" class="empty-state">
+      <div class="signal-icon"><span></span><span></span><span></span></div>
+      <h2>等待数据</h2>
+      <p>调用 <code>page.publish(ball_x=1.2, ball_y=3.4)</code> 后，曲线会自动出现。</p>
+    </section>
+
+    <section id="chartGrid" class="chart-grid" aria-live="polite"></section>
+  </main>
+
+  <template id="chartTemplate">
+    <article class="chart-card">
+      <header class="chart-header">
+        <div class="metric-title-row">
+          <span class="color-mark"></span>
+          <h2 class="metric-name"></h2>
+        </div>
+        <strong class="latest-value">--</strong>
+      </header>
+      <canvas class="chart" role="img"></canvas>
+      <footer class="chart-stats">
+        <span>最小 <b class="min-value">--</b></span>
+        <span>最大 <b class="max-value">--</b></span>
+        <span class="point-count">0 点</span>
+      </footer>
+    </article>
+  </template>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "STM32F407 Debug (OpenOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/Debug/26H_Remake.elf",
+            "device": "STM32F407IGH6",
+            "configFiles": [
+                "${workspaceFolder}/openocd.cfg"
+            ],
+            "preLaunchTask": "CMake: Build Debug",
+            "runToEntryPoint": "main",
+            "showDevDebugOutput": "raw"
+        }
+    ]
+}

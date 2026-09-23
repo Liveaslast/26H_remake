@@ -1,0 +1,28 @@
+description: Ultralytics YOLO26n model trained on D:\26H-remake\26H_Remake_Vision\best\algorithm\train\datasets\roi_ball_128x640_angle12\roi_ball.yaml
+author: Ultralytics
+date: '2026-09-13T20:07:40.657271+08:00'
+version: 8.4.150
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+head: Detect
+batch: 1
+imgsz:
+- 128
+- 640
+names:
+  0: item
+args:
+  data: calibration.yaml
+  name: hailo8
+  fraction: 1.0
+  conf: null
+  iou: 0.7
+  quantize: 8
+  simplify: true
+channels: 3
+end2end: false
+hailo_arch: hailo8
+nms: false
+semantic_baked: false

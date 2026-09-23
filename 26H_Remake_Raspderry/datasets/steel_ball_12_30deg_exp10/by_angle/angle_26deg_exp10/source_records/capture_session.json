@@ -1,0 +1,44 @@
+{
+  "schema": "steel-ball-roi-capture-session/v1",
+  "created_utc": "2026-08-03T17:02:53.965887+00:00",
+  "mode": "no_m0_manual_angle",
+  "warning": "Manual angle is not synchronized with a moving rod and must not be used for motor control.",
+  "calibration_path": "/home/ikun/opencv_workspace/workspace/best/algorithm/no_m0/calibration_output/roi_128x640/dynamic_calibration_no_m0.json",
+  "calibration_sha256": "02a8a0302c6b082c0084030db52145221b0feded7bf35d9d09f90c44f19032de",
+  "geometry_id": "b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad",
+  "calibration_angle_range_deg": [
+    14.0,
+    30.0
+  ],
+  "rectified_size": {
+    "width": 1000,
+    "height": 200
+  },
+  "source_roi": {
+    "x_px": 128,
+    "y_px": 425,
+    "width_px": 1141,
+    "height_px": 121
+  },
+  "model_input_size": {
+    "width": 640,
+    "height": 128
+  },
+  "letterbox_padding_value": 114,
+  "camera": {
+    "device": "/dev/video0",
+    "width": 1280,
+    "height": 720,
+    "fps": 60.0,
+    "fourcc": "MJPG",
+    "exposure_time_absolute": 10
+  },
+  "ready_for_training": {
+    "images": "images/",
+    "labels": "labels/",
+    "unlabeled_images": "unlabeled/",
+    "class_names": {
+      "0": "steel_ball"
+    }
+  }
+}
