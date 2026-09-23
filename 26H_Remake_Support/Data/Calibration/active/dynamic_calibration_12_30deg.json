@@ -1,0 +1,311 @@
+{
+  "schema": "dynamic-rod-calibration/v1",
+  "source": {
+    "width_px": 1280,
+    "height_px": 720,
+    "roi": {
+      "x_px": 128,
+      "y_px": 425,
+      "width_px": 1141,
+      "height_px": 121
+    }
+  },
+  "rectification": {
+    "width_px": 1000,
+    "height_px": 200
+  },
+  "maximum_angle_margin_deg": 0.35,
+  "geometry_id": "b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad",
+  "samples": [
+    {
+      "angle_deg": 14.0,
+      "source_corners_px": [
+        [
+          14.0,
+          12.0
+        ],
+        [
+          1081.0,
+          6.0
+        ],
+        [
+          1079.0,
+          91.0
+        ],
+        [
+          15.0,
+          105.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          3.0469260343663885e-06,
+          -0.028687100032545307,
+          13.027062231495151
+        ]
+      }
+    },
+    {
+      "angle_deg": 16.0,
+      "source_corners_px": [
+        [
+          17.0,
+          13.0
+        ],
+        [
+          1086.0,
+          3.0
+        ],
+        [
+          1089.0,
+          91.0
+        ],
+        [
+          12.0,
+          106.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          1.3571608338507783e-06,
+          -0.026997656988646878,
+          12.743500479774708
+        ]
+      }
+    },
+    {
+      "angle_deg": 18.0,
+      "source_corners_px": [
+        [
+          17.0,
+          15.0
+        ],
+        [
+          1092.0,
+          2.0
+        ],
+        [
+          1093.0,
+          97.0
+        ],
+        [
+          11.0,
+          104.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          -3.86494770712578e-07,
+          -0.025300832613824337,
+          12.971560145930715
+        ]
+      }
+    },
+    {
+      "angle_deg": 20.0,
+      "source_corners_px": [
+        [
+          14.0,
+          14.0
+        ],
+        [
+          1095.0,
+          7.0
+        ],
+        [
+          1099.0,
+          96.0
+        ],
+        [
+          14.0,
+          103.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          2.3519557680563226e-07,
+          -0.025703377651264004,
+          12.606663575459645
+        ]
+      }
+    },
+    {
+      "angle_deg": 22.0,
+      "source_corners_px": [
+        [
+          12.0,
+          18.0
+        ],
+        [
+          1105.0,
+          6.0
+        ],
+        [
+          1108.0,
+          94.0
+        ],
+        [
+          11.0,
+          106.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          1.5163597529246977e-06,
+          -0.02697966697082897,
+          12.759574029635408
+        ]
+      }
+    },
+    {
+      "angle_deg": 24.0,
+      "source_corners_px": [
+        [
+          9.0,
+          18.0
+        ],
+        [
+          1108.0,
+          6.0
+        ],
+        [
+          1112.0,
+          100.0
+        ],
+        [
+          12.0,
+          105.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          -1.0825877412545617e-06,
+          -0.02438948969581298,
+          12.589592537180245
+        ]
+      }
+    },
+    {
+      "angle_deg": 26.0,
+      "source_corners_px": [
+        [
+          10.0,
+          16.0
+        ],
+        [
+          1116.0,
+          8.0
+        ],
+        [
+          1121.0,
+          105.0
+        ],
+        [
+          7.0,
+          107.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          8.607222793571737e-07,
+          -0.02647221464725901,
+          12.904096418321597
+        ]
+      }
+    },
+    {
+      "angle_deg": 28.0,
+      "source_corners_px": [
+        [
+          9.0,
+          13.0
+        ],
+        [
+          1124.0,
+          6.0
+        ],
+        [
+          1127.0,
+          105.0
+        ],
+        [
+          7.0,
+          101.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          6.163079659187129e-07,
+          -0.026274559408507824,
+          13.028737203451902
+        ]
+      }
+    },
+    {
+      "angle_deg": 30.0,
+      "source_corners_px": [
+        [
+          11.0,
+          13.0
+        ],
+        [
+          1129.0,
+          6.0
+        ],
+        [
+          1131.0,
+          105.0
+        ],
+        [
+          11.0,
+          105.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          1.0535401511751423e-06,
+          -0.02630360276077376,
+          12.588650767531906
+        ]
+      }
+    }
+  ],
+  "metadata": {
+    "test_only": true,
+    "angle_source": "manual_assumed",
+    "created_local_time": "2026-08-03 18:58:16",
+    "requested_angles_deg": [
+      14.0,
+      16.0,
+      18.0,
+      20.0,
+      22.0,
+      24.0,
+      26.0,
+      28.0,
+      30.0
+    ],
+    "positions_cm": [
+      -10.0,
+      -5.0,
+      0.0,
+      5.0,
+      10.0
+    ],
+    "rod_length_cm": 25.0,
+    "groove_width_cm": 1.3
+  },
+  "angle_range_deg": [
+    12.0,
+    30.0
+  ]
+}

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+Data/Calibration/generated/
+Data/Training/Captures/
+Data/Training/Prepared/
+Data/Training/Models/
+VISUAL_ASSET_RENAME_MANIFEST.csv
+
