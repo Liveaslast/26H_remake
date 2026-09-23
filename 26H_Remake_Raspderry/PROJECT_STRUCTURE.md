@@ -8,8 +8,8 @@ workspace/
 │  ├─ run.py                   唯一正式啟動入口
 │  ├─ algorithm/               運行配置、標定、追蹤、通信與流程編排
 │  │  ├─ app/                  運行組裝與循環
-│  │  ├─ calibration_data/     生效標定 JSON 與對應標定照片
-│  │  ├─ control/              上位機安全外環控制類
+│  │  ├─ calibration_data/     正式進程載入的生效標定 JSON
+│  │  ├─ control/              上位機側控制命令資料型別；Task1 實際控制在 STM32
 │  │  ├─ core/                 標定、估算與追蹤核心
 │  │  ├─ formal/               正式追蹤入口實現
 │  │  ├─ hailo_model/          Hailo HEF 與模型 metadata
@@ -17,12 +17,7 @@ workspace/
 │  ├─ debug_page/              Web 調試頁
 │  └─ WIFI_test/               Wi-Fi MJPEG 串流
 ├─ ball_detection_common/      共用檢測型別、基礎檢測與圓擬合
-├─ ball_detection_runtime/     正式自適應檢測器及 HailoRT/NCNN 後端
-├─ datasets/                   不被正式進程載入的訓練資料
-│  └─ steel_ball_12_30deg_exp10/
-│     └─ by_angle/             12、14……30°的圖片、YOLO 標註與來源記錄
-└─ tools/
-   └─ data_maintenance/        資料文件安全改名與完整性維護工具
+└─ ball_detection_runtime/     正式自適應檢測器及 HailoRT/NCNN 後端
 ```
 
 正式 HailoRT 調用鏈：
@@ -42,6 +37,8 @@ best/run.py
 best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json
 ```
 
-標定照片位於 `best/algorithm/calibration_data/source_capture/angle_12_30deg/`；它們僅用於核對和重建標定，不會被正式運行命令載入。
+訓練資料、標定照片和離線工具保存在本地同級工程 `26H_Remake_Support`；部署到樹莓派時它可位於 `~/vision_workspace/26H_Remake_Support`，但不會被正式運行命令載入。
+
+PT 到 Hailo HEF 的轉換在本地虛擬機完成；本運行包只保存正式使用的 `best.hef` 和 `metadata.yaml`。
 
 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt` 保留重命名前的實機模組來源，是不可改寫的溯源證據。

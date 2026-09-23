@@ -15,7 +15,7 @@ python3 best/run.py \
   --no-display
 ```
 
-本目錄的正式運行代碼只按上述命令的實際載入鏈整理，沒有替換演算法，也沒有把歷史版本、測試程式、NCNN 回退模型或舊標定混入運行鏈。訓練資料另置於頂層 `datasets/`，不會被正式進程匯入。
+本目錄的正式運行代碼只按上述命令的實際載入鏈整理，沒有替換演算法，也沒有把歷史版本、測試程式、NCNN 回退模型或舊標定混入運行鏈。訓練與採集資料另置於同級 `26H_Remake_Support`，不會被正式進程匯入。
 
 ## 實際載入鏈
 
@@ -46,7 +46,9 @@ python3 best/run.py \
 - 原鏡像中的對應 ROI 資料目錄由 `angle12_exp10`、`angle14_exp10` 一直到 `angle30_exp10`。
 - 正式命令實際載入的標定 JSON 明寫 `angle_range_deg: [12.0, 30.0]`。
 - 該 JSON 內實際標定樣本是 `14,16,18,20,22,24,26,28,30`，metadata 同時標記 `test_only=true`、`angle_source=manual_assumed`。這個差異來自原始檔案，未被本整理修飾或補造。
-- 訓練圖片與標註不會在正式推理時被讀取；它們只作為可選的來源資料保存在頂層 `datasets/`。正式進程使用的是已編譯 HEF、模型 metadata 和生效標定 JSON。
+- **待核對的本地鏡像不一致：**`best/algorithm/config.toml` 中的相機 ROI 是 `(129,422,1143,124)`，但本地 active JSON 記錄 `(128,425,1141,121)`。`tracking_setup.py` 啟動時要求兩者一致，因此不能僅憑文件名判定這份本地鏡像可直接替換目前正在正常運行的樹莓派工作區。須先對照實機現行配置；沒有重新標定與驗證前，不改寫 JSON 或正式配置。
+- 訓練圖片與標註不會在正式推理時被讀取；它們只作為來源資料保存在本地 `26H_Remake_Support/Data/Training`。正式進程使用的是已編譯 HEF、模型 metadata 和生效標定 JSON。
+- PT 到 Hailo HEF 的轉換在本地虛擬機完成，暫不在本運行包中記錄生成命令；此處只對實機使用的 `best.hef` 做溯源。
 
 ## 樹莓派實機來源核驗
 
@@ -72,9 +74,9 @@ python3 best/run.py \
 
 `no_m0` 原本是歷史上的「不依賴 MSPM0、人工提供角度」命名，但該目錄在正式命令中實際承擔的是 12–30°視覺標定資料，因此改為 `calibration_data`。重命名前的實機模組名稱與絕對路徑仍原樣保存在 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt`，作為來源證據，不隨整理結果改寫。
 
-標定來源照片按用途分到 `calibration_data/source_capture/angle_12_30deg/source_images` 與 `rectified_images`。角點、位置映射與透視資料原本就保存在生效 JSON 的 `samples` 中，來源沒有獨立點位 TXT，因此未人工生成替代文件。
+標定來源照片按用途分到 Support 的 `Data/Calibration/angle_12_30deg/source_images` 與 `rectified_images`。角點、位置映射與透視資料原本就保存在生效 JSON 的 `samples` 中，來源沒有獨立點位 TXT，因此未人工生成替代文件。
 
-`datasets/steel_ball_12_30deg_exp10` 保存從原鏡像 `no_m0/roi_dataset_128x640` 溯源出的 2405 張訓練輸入圖與 2405 個一一配對的 YOLO TXT，按 12、14、16、18、20、22、24、26、28、30°和曝光值 10 分組。未標註圖、source ROI 與其他中間圖不屬於這批訓練對，沒有混入。
+Support 的 `Data/Training/steel_ball_12_30deg_exp10` 保存從原鏡像 `no_m0/roi_dataset_128x640` 溯源出的 2405 張訓練輸入圖與 2405 個一一配對的 YOLO TXT，按 12、14、16、18、20、22、24、26、28、30°和曝光值 10 分組。未標註圖、source ROI 與其他中間圖不屬於這批訓練對，沒有混入。
 
 另外同步了已在實機測試流程中確認的兩個本地修正：`io/runtime.py` 不再因遙測請求而注入假的零值 BALL_STATE；`app/balance_runtime.py` 增加診斷 CSV 欄位。兩者均不改動 Hailo 推理、bbox 球心、RANSAC 執行條件或控制參數。
 
