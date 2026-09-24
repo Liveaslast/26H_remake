@@ -1,6 +1,6 @@
 # 工具索引：先按任務找入口
 
-所有命令均在 `26H_Remake_Support` 根目錄執行。`Vision/APP` 製作視覺資料，`Diagnostics/APP` 採集與分析測試；`Core`、`IO` 是前兩者的依賴，通常不直接運行。完整參數與複製命令見 [COMMANDS.md](COMMANDS.md)，各數據列見 [DATA_FORMAT.md](DATA_FORMAT.md)。
+工具命令在對應平台的 `26H_Remake_Support` 根目錄執行；Windows 保留完整 Support，樹莓派正式視覺不需要 Support 常駐。要在 Pi 選 ROI、標定或採圖，先按 [COMMANDS.md](COMMANDS.md) 部署 `Vision/`。`Vision/APP` 製作視覺資料，`Diagnostics/APP` 採集與分析測試；`Core`、`IO` 是依賴，通常不直接運行。各數據列見 [DATA_FORMAT.md](DATA_FORMAT.md)。
 
 | 目標 | 平台 | 入口 | 主要輸入 → 輸出 |
 |---|---|---|---|
@@ -12,7 +12,7 @@
 | 訓練 YOLO | Windows | `Vision/APP/train_yolo.py` | `roi_ball.yaml`、基礎 PT → `Data/Training/Models/` |
 | 預覽批量改名 | Windows | `Vision/APP/rename_dataset_files.py` | 現有資料 → 預覽；只有 `--apply` 才修改 |
 | 採下位機 CSV | Windows | `Diagnostics/APP/capture_mcu_csv.py` | USART6 調試串口 → `Data/TestRecords/` CSV |
-| 採視覺 probe | 樹莓派 | `Diagnostics/APP/capture_vision_csv.sh` | 同一正式 `best/run.py` → `~/vision_workspace/diagnostics/` CSV |
+| 採視覺 probe | 樹莓派 | 正式 `best/run.py --vision-probe-csv`；可選部署 `Diagnostics/APP/capture_vision_csv.sh` | 同一正式進程 → `~/vision_workspace/diagnostics/` CSV |
 | 看幀率/valid/跳變 | Windows | `Diagnostics/APP/analyze_vision_probe.py` | 單份 probe CSV → 分析輸出 |
 | 對齊視覺與下位機 | Windows | `Diagnostics/APP/analyze_vision.py` | probe + MCU vision CSV → 聯合分析 |
 | 初始化零點 | Windows | `Diagnostics/APP/initialize_zero.py` | 指定 COM 口 → 下位機 `task init` |

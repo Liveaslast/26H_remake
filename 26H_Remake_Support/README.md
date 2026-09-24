@@ -1,9 +1,9 @@
 # 26H Remake Support
 
-本目錄只保存「資料製作、離線分析與測試」內容，與正式工程並列：
+本目錄只保存「資料製作、離線分析與測試」內容，與正式工程並列。Windows 本地完整保存 Support；樹莓派正式視覺只需 `/home/ikun/vision_workspace/workspace` 和頂層 `.venv`，**不依賴樹莓派上長期存放 Support**。需要重新拍攝 ROI、標定或訓練圖片時，再把 `Vision/` 工具部署到樹莓派。
 
 - `26H_Remake_DJC`：下位機正式工程。
-- `26H_Remake_Raspderry`：樹莓派正式運行鏡像；部署後由 `~/vision_workspace/workspace/best/run.py` 啟動。
+- `26H_Remake_Raspderry`：樹莓派正式運行鏡像；2026-09-24 已由使用者部署到 `~/vision_workspace/workspace`，由 `best/run.py` 啟動。
 - `26H_Remake_Support`：本目錄，不參與正式啟動。
 
 ```text
@@ -37,11 +37,11 @@
 
 ## 生效 12–30° 標定與實機核對
 
-2026-09-24 核對並更新本地鏡像：
+2026-09-24 核對並更新本地鏡像，後由使用者部署、實機驗證：
 
-- 完整標定來自樹莓派 `/home/ikun/vision_workspace/workspace_26h_remake/calibration/output/roi_128x640/dynamic_calibration.json`，含 12、14、…、30° 十個實測樣本，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。已放入本地 Raspberry 鏡像 `assets/calibration/dynamic_calibration_12_30deg.json`，並同步到 Support `Data/Calibration/active/dynamic_calibration_12_30deg.json`。
+- 完整標定原先取自樹莓派 `/home/ikun/vision_workspace/workspace_26h_remake/calibration/output/roi_128x640/dynamic_calibration.json`；舊目錄可清理，生效副本現於正式 `~/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json`，Windows Support 保有 `Data/Calibration/active/dynamic_calibration_12_30deg.json`。含 12、14、…、30° 十個實測樣本，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。
 - 此前九樣本版本的 `geometry_id=b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad`。新舊 JSON 的粗 ROI 及 14–30°九個樣本相同；新 JSON 在 12°真正選取 12°樣本，12–14°之間按兩個樣本插值。
-- 現存 2405 組訓練資料（含 12°組）的 `capture_session.json` 仍記錄舊幾何 ID；HEF 未重新編譯。不能僅靠檔案檢查判定模型與新 12–14°展開是否匹配，須在樹莓派測試工作區實測該角度段的圖像、坐標及 valid。
-- 舊樹莓派工作區的 TOML 粗 ROI 是 `(129,422,1143,124)`，生效 JSON 記錄 `(128,425,1141,121)`。已查明舊代碼的相等檢查錯放於 `return` 後，因此實際裁切始終使用 JSON ROI；本地重構鏡像的 TOML 已對齊現行 JSON，並恢復檢查。**這是本地修正，不表示已修改樹莓派正在運行的工作區。**
+- Windows 封存的 2405 組訓練資料（含 12°組）的 `capture_session.json` 仍記錄舊幾何 ID；HEF 未重新編譯，模型缺少 `deployment.json`，無法自動核對。使用者已在樹莓派測試工作區實測 12–14°視覺正常，正式 `workspace` 視覺亦正常；補標定後未重跑 Task1。
+- 舊樹莓派工作區 TOML 的粗 ROI 是 `(129,422,1143,124)`，標定 JSON 記錄 `(128,425,1141,121)`。舊代碼相等檢查錯放於 `return` 後，實際裁切始終使用 JSON ROI；新版正式 `workspace` 的 TOML 已與 JSON 對齊並恢復檢查。
 
-**修改只發生在本地鏡像，沒有上傳或覆蓋樹莓派現行工作區。**實機 12°附近通過前，先在獨立測試工作區驗證，不要直接替換已跑通的正式進程。原本穩定的 Task1 測試不等同於 12°端點測試。
+正式工作區與支持工具分開管理：原始標定、訓練圖和歷史 CSV 的可復用副本在 Windows 本目錄；樹莓派上的舊工作區或臨時 Support 副本不是正式視覺運行條件。實機操作與數據回收見 `Docs/COMMANDS.md`。

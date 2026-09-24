@@ -1,6 +1,15 @@
 # 視覺資料製作與測試命令
 
-先分清兩個位置：樹莓派的 `~/vision_workspace/26H_Remake_Support` 是拍攝工作區；Windows 的 `D:\26H-remake\26H_Remake_Support` 是保存資料、標註和訓練的本地工作區。下列命令不會自動把新標定或模型放入正在運行的 `~/vision_workspace/workspace`。
+先分清兩個位置：Windows 的 `D:\26H-remake\26H_Remake_Support` 完整保存資料與工具；樹莓派正式視覺在 `~/vision_workspace/workspace`，Python 環境位於同級 `.venv`，HailoRT 等系統設備／驅動仍須正常可用。清理後 Pi 不預設有 Support 目錄；只有重新選 ROI、標定或採圖時，才把 `Vision/` 部署到 `~/vision_workspace/26H_Remake_Support`。以下資料工具不會自動改動正式視覺配置。
+
+如需在樹莓派製作新視覺資料，先在 Windows PowerShell 執行；不拍新資料時跳過整段：
+
+```powershell
+ssh ikun@192.168.137.2 "mkdir -p /home/ikun/vision_workspace/26H_Remake_Support/Data/Calibration/generated /home/ikun/vision_workspace/26H_Remake_Support/Data/Training/Captures"
+scp -r "D:\26H-remake\26H_Remake_Support\Vision" ikun@192.168.137.2:/home/ikun/vision_workspace/26H_Remake_Support/
+```
+
+樹莓派只獲得工具與空輸出目錄；不必把 Windows 封存的 2405 張訓練圖重新傳上去。
 
 ## 1. 樹莓派：確認相機 ROI
 
@@ -19,7 +28,7 @@ python3 Vision/APP/select_roi.py \
 
 結果：終端打印 ROI 的 `x/y/width/height`，預覽圖保存在樹莓派 `~/vision_workspace/26H_Remake_Support/Data/Calibration/roi_selection_preview.png`。此腳本**只查看、記錄 ROI，不會自動修改配置**。如四個數值不同於 `Vision/Config/vision_tools.toml` 的 `[vision_geometry]`，先統一標定和拍攝所用的 ROI，再繼續。
 
-## 2. 樹莓派：取得 12–30°標定候選
+## 2. 樹莓派：需要重新標定時，生成新候選
 
 在同一個樹莓派終端，人工將球桿依次調到提示角度，穩定後按空格，按畫面提示選軌道角點和位置點：
 
@@ -32,7 +41,7 @@ python3 Vision/APP/calibrate_geometry.py \
   --output-dir Data/Calibration/generated
 ```
 
-結果：樹莓派 `Data/Calibration/generated/dynamic_calibration_manual.json`，同一目錄還有供檢查的相機原圖和展開圖。這個腳本使用**人工讀取的角度**，產物會標記 `test_only`；它只供這次資料採集和檢查，**不會自動變成正式運行標定**。
+結果：樹莓派 `Data/Calibration/generated/dynamic_calibration_manual.json`，同一目錄還有供檢查的相機原圖和展開圖。這個腳本使用**人工讀取的角度**，產物會標記 `test_only`；它只供新資料採集和檢查，**不會自動變成正式運行標定**。現行正式 JSON 已包含完整 12–30°十樣本，無需為了正常啟動重跑本步。
 
 把候選標定與檢查圖片複製回 Windows。在 Windows PowerShell 執行：
 
@@ -45,11 +54,11 @@ scp -r ikun@192.168.137.2:/home/ikun/vision_workspace/26H_Remake_Support/Data/Ca
 
 ## 3. 樹莓派：拍攝訓練圖片
 
-回到樹莓派的 `~/vision_workspace/26H_Remake_Support`，以 12°為例：
+回到樹莓派的 `~/vision_workspace/26H_Remake_Support`，以 12°為例。下面直接讀取正式 `workspace` 已生效且通過實機視覺檢查的十樣本 JSON；拍攝輸出留在 Support，不會寫回正式工作區：
 
 ```bash
 python3 Vision/APP/capture_training_data.py \
-  --calibration Data/Calibration/generated/dynamic_calibration_manual.json \
+  --calibration ../workspace/assets/calibration/dynamic_calibration_12_30deg.json \
   --output-dir Data/Training/Captures \
   --session angle_12deg_exp10 \
   --angle-deg 12 \
@@ -109,7 +118,7 @@ python Vision\APP\train_yolo.py `
   --model Data\Training\Models\yolo26n.pt
 ```
 
-結果：Windows 的 `Data\Training\Models\best.pt` 及訓練紀錄。PT→Hailo HEF 在你的本地虛擬機完成，這裏不提供轉換命令。完成模型、輸入尺寸和標定幾何核對前，**不要把新資料直接覆蓋樹莓派現行正式工作區**。
+結果：Windows 的 `Data\Training\Models\best.pt` 及訓練紀錄。PT→Hailo HEF 在你的本地虛擬機完成，這裏不提供轉換命令。新訓練成品須另行核對後部署；資料集整理與訓練命令本身不會覆蓋正在運行的 `workspace`。
 
 預覽資料改名（不改文件）：
 
@@ -121,9 +130,9 @@ python Vision\APP\rename_dataset_files.py
 
 ## 樹莓派：正式視覺
 
-正式運行包內容必須直接位於 `~/vision_workspace/workspace`；僅把鏡像上傳到旁邊不會改變下列命令實際運行的代碼。
+正式運行包內容已由使用者部署到 `~/vision_workspace/workspace`；虛擬環境是 `~/vision_workspace/.venv`，提示符 `(vision_ws)` 不是另一個目錄。Support 工具和舊工作區不是正式啟動依賴。
 
-部署新版 Raspberry 運行包後，這條命令會打開 `~/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json` 取得角度與座標映射。尚未替換的樹莓派舊工作區仍使用其原路徑，**把新版鏡像放在旁邊不會改變現行進程**。上面拍攝流程產生的 `generated/dynamic_calibration_manual.json` 不會自動改變生效文件或運行效果。
+這條命令打開 `~/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json` 取得角度與座標映射，實際有 12、14、…、30°十個樣本。新拍攝流程產生的 `generated/dynamic_calibration_manual.json` 不會自動改變生效文件或運行效果。使用者已在樹莓派確認正式視覺正常；補 12°後未重跑 Task1。
 
 ```bash
 cd ~/vision_workspace/workspace
@@ -211,14 +220,30 @@ python Diagnostics\APP\capture_mcu_csv.py `
 
 vision probe 是同一個正式 `best/run.py` 進程的逐幀內部觀測 CSV，不是另一套識別算法，也不是下位機串口通道。它為每個已處理相機幀記錄耗時、坐標、valid、置信度、角度和 bbox 中心，用於定位漏幀、延遲與坐標跳變發生在哪一端。
 
-如果 Support 位於樹莓派的 `~/vision_workspace/26H_Remake_Support`：
+清理後無須重新上傳整套 Support；在樹莓派直接運行以下命令。先停止平時的視覺進程，避免兩個進程同時佔用相機與串口：
 
 ```bash
-cd ~/vision_workspace/26H_Remake_Support
-bash Diagnostics/APP/capture_vision_csv.sh
+mkdir -p ~/vision_workspace/diagnostics
+cd ~/vision_workspace/workspace
+source ~/vision_workspace/.venv/bin/activate
+python3 best/run.py \
+  --port /dev/ttyUSB0 \
+  --inference-backend hailort \
+  --debug-page \
+  --serial-read-timeout-ms 1 \
+  --wifi-stream \
+  --no-display \
+  --vision-probe-csv "$HOME/vision_workspace/diagnostics/vision_probe_$(date +%Y%m%d_%H%M%S).csv"
 ```
 
-該腳本仍啟動 `~/vision_workspace/workspace/best/run.py`，只額外加入 `--vision-probe-csv ~/vision_workspace/diagnostics/vision_probe_<時間戳>.csv`。
+此命令與平時正式入口相同，只額外加入 `--vision-probe-csv`，輸出到樹莓派 `~/vision_workspace/diagnostics/`；若先前清理掉該目錄，`mkdir -p` 會重新建立。完成後在 Windows PowerShell 複製回本地 `Data/TestRecords/`：
+
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+scp ikun@192.168.137.2:/home/ikun/vision_workspace/diagnostics/vision_probe_實際時間戳.csv Data\TestRecords\
+```
+
+將 `實際時間戳` 換成 Pi 端產生的檔名，不要照抄佔位符。`Diagnostics/APP/capture_vision_csv.sh` 保留為可復用腳本；只有把它單獨部署到 Pi 後才可直接在 Pi 執行。
 
 ## Windows：聯合分析與 Task1
 

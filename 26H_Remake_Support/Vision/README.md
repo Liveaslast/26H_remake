@@ -47,6 +47,8 @@ Vision/
 
 ## 樹莓派上的相機相關命令
 
+清理後樹莓派不預設有 `~/vision_workspace/26H_Remake_Support`。要重新選 ROI、標定或拍攝，先按 `../Docs/COMMANDS.md` 從 Windows 部署 `Vision/` 工具，再執行以下命令；正式視覺運行不需要這一步。
+
 ```bash
 cd ~/vision_workspace/26H_Remake_Support
 source ~/vision_workspace/.venv/bin/activate
@@ -59,7 +61,7 @@ python3 Vision/APP/calibrate_geometry.py \
   --positions=-10,-5,0,5,10
 
 python3 Vision/APP/capture_training_data.py \
-  --calibration Data/Calibration/generated/dynamic_calibration_manual.json \
+  --calibration ../workspace/assets/calibration/dynamic_calibration_12_30deg.json \
   --session angle_12deg_exp10 \
   --angle-deg 12 \
   --exposure-time-absolute 10
@@ -79,4 +81,4 @@ python Vision\APP\rename_dataset_files.py
 
 PT 到 Hailo HEF 在本地虛擬機完成，暫不屬於本倉庫文檔範圍。詳細輸入輸出見 `../Docs/COMMANDS.md` 和 `../Docs/DATA_FORMAT.md`。
 
-上面的資料集整理命令使用新拍攝且完成標註的會話。樹莓派和 Windows 之間的具體複製命令、每一步的輸出位置，見 `../Docs/COMMANDS.md`。
+上面的資料集整理命令使用新拍攝且完成標註的會話。拍攝命令讀正式運行 JSON，但輸出只寫入 Support 的新會話目錄，不改正式工作區。樹莓派和 Windows 之間的具體複製命令、每一步的輸出位置，見 `../Docs/COMMANDS.md`。

@@ -11,14 +11,14 @@
 
 ## 工程邊界
 
-- `26H_Remake_Support`：資料、標定/採集/訓練工具和 CSV 診斷。
-- `26H_Remake_Raspderry`：部署到 `~/vision_workspace/workspace` 的正式視覺閉包。
+- `26H_Remake_Support`：Windows 保存資料、標定/採集/訓練工具和 CSV 診斷；需要拍攝時才部署 Pi 端工具。
+- `26H_Remake_Raspderry`：已部署到 `~/vision_workspace/workspace` 的正式視覺閉包；依賴頂層 `~/vision_workspace/.venv`，不依賴舊工作區。
 - `26H_Remake_DJC`：下位機固件、狀態估計、電機控制與 Task1 狀態機。
 
 ## 資料鏈
 
 1. 在樹莓派桌面用實際 `/dev/video0` 選 ROI。
-2. 在實際機構上完整採集 12、14、16、18、20、22、24、26、28、30°標定樣本，生成 12–30°動態透視 JSON；本地正式鏡像現已含完整十樣本標定。其與封存訓練資料/HEF 的實機匹配仍須核對，詳見 Support 根目錄 README。
+2. 在實際機構上完整採集 12、14、16、18、20、22、24、26、28、30°標定樣本，生成 12–30°動態透視 JSON；現行正式 `workspace` 已含完整十樣本標定，12–14°實機視覺由使用者確認正常。與封存訓練資料的幾何 ID 不同，HEF 亦無 `deployment.json` 可自動核對，詳見 Support 根目錄 README。
 3. 在樹莓派以曝光值 10 採集 12、14、16、18、20、22、24、26、28、30°的 640×128 ROI。
 4. 在 Windows 框選球 bbox；標籤格式是歸一化 `class center_x center_y width height`。
 5. 對新採集、已標註的會話，校驗 geometry ID 和圖片/標籤配對，生成 train/val 和 `roi_ball.yaml`。

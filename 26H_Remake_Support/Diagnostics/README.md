@@ -14,7 +14,7 @@ Diagnostics/
 | 腳本 | 平台 | 應用 |
 |---|---|---|
 | `capture_mcu_csv.py` | Windows | 從下位機 USART6 調試串口採集 `vision` 或 `control` CSV，附加主機時間。 |
-| `capture_vision_csv.sh` | 樹莓派 | 啟動正式 `best/run.py`，額外寫逐幀 vision probe。 |
+| `capture_vision_csv.sh` | 樹莓派（部署腳本後） | 啟動正式 `best/run.py`，額外寫逐幀 vision probe。Pi 不需常駐整套 Support。 |
 | `analyze_vision.py` | Windows | 聯合對齊下位機 `vision` CSV 與樹莓派 probe。 |
 | `analyze_vision_probe.py` | Windows | 單獨分析 probe 的幀率、耗時、valid、更新間隔和坐標事件。 |
 | `initialize_zero.py` | Windows | 發送 `task init`；下位機設當前機械零點並設 22°平衡角。 |
@@ -74,4 +74,4 @@ python Diagnostics\APP\run_task1.py --port COM26 --output $task1Csv
 python Diagnostics\APP\analyze_task1.py $task1Csv
 ```
 
-樹莓派 probe 的啟動和聯合分析命令見 `../Docs/COMMANDS.md`。
+樹莓派 probe 的直接啟動命令、輸出目錄和聯合分析命令見 `../Docs/COMMANDS.md`。`~/vision_workspace/diagnostics` 若先前已清理，啟動前須重新建立；它是輸出目錄，不是正式運行依賴。
