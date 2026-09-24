@@ -6,6 +6,8 @@ __pycache__/
 Data/Calibration/generated/
 Data/Training/Captures/
 Data/Training/Prepared/
-Data/Training/Models/
+Data/Training/Models/*
+!Data/Training/Models/README.md
+!Data/Training/Models/best.pt
+!Data/Training/Models/best.pt.geometry.json
 VISUAL_ASSET_RENAME_MANIFEST.csv
-

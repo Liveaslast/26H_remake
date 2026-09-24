@@ -10,7 +10,7 @@
 
 ## 運行
 
-樹莓派正式部署目錄是 `/home/ikun/vision_workspace/workspace`，Python 虛擬環境獨立位於 `/home/ikun/vision_workspace/.venv`。`(vision_ws)` 只是終端提示名稱。
+樹莓派正式部署目錄是 **/home/ikun/vision_workspace/workspace**，Python 虛擬環境獨立位於 **/home/ikun/vision_workspace/.venv**。**(vision_ws)** 只是終端提示名稱。
 
 在樹莓派終端依序執行以下三行：
 
@@ -18,7 +18,7 @@
 2. source ~/vision_workspace/.venv/bin/activate
 3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
-模型缺少可自動核對幾何 ID 的 `deployment.json`；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
+模型缺少可自動核對幾何 ID 的 **deployment.json**；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
 
 ## 按任務閱讀
 
