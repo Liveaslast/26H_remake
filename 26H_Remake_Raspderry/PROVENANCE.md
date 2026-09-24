@@ -1,104 +1,36 @@
-# 樹莓派正式運行包：嚴格溯源記錄
+# 來源與重構邊界
 
-## 唯一根命令
+## 唯一正式入口
 
-```bash
-cd ~/vision_workspace/workspace
-source ~/vision_workspace/.venv/bin/activate
+樹莓派原命令 `python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display` 保留。現在 `best/run.py` 只導入 `ballbeam.app.main.main`；不另建立視覺循環。
 
-python3 best/run.py \
-  --port /dev/ttyUSB0 \
-  --inference-backend hailort \
-  --debug-page \
-  --serial-read-timeout-ms 1 \
-  --wifi-stream \
-  --no-display
-```
+## 原始證據
 
-本目錄的正式運行代碼只按上述命令的實際載入鏈整理，沒有替換演算法，也沒有把歷史版本、測試程式、NCNN 回退模型或舊標定混入運行鏈。訓練與採集資料另置於同級 `26H_Remake_Support`，不會被正式進程匯入。
+來源工作區為樹莓派 `/home/ikun/vision_workspace/workspace`，本地採回的 `_pi_raw_new` 曾與正式來源檔逐一核對。原模組來源及實機 Python/HailoRT 版本保存在 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt`。本輪只重構本地鏡像，未向樹莓派上傳。
 
-## 實際載入鏈
+| 重構前 | 重構後 |
+|---|---|
+| `best/algorithm/formal/track_ball.py` | `ballbeam/app/main.py` |
+| `best/algorithm/app/` | `ballbeam/app/` |
+| `best/algorithm/core/` | `ballbeam/vision/` |
+| `best/algorithm/io/` | `ballbeam/hardware/` |
+| `best/algorithm/control/` | `ballbeam/control/` |
+| `ball_detection_common/`、`ball_detection_runtime/` | `ballbeam/vision/detection_common/`、`detection_runtime/` |
+| `best/debug_page/`、`best/WIFI_test/` | `ballbeam/interfaces/debug_page/`、`wifi_stream/` |
+| `best/algorithm/config.toml` | `config/runtime.toml` |
+| `best/algorithm/calibration_data/.../*.json` | `assets/calibration/dynamic_calibration_12_30deg.json` |
+| `best/algorithm/hailo_model/` | `assets/models/hailo/` |
 
-1. `best/run.py` → `best/algorithm/formal/track_ball.py`
-2. `track_ball.py` → `algorithm.app`、`algorithm.core`、`algorithm.io`、`algorithm.config`
-3. `algorithm/config.toml` 載入分組：`vision_geometry`、`tracking`、`detector`、`tracker`、`debug`、`formal_tracking`
-4. `tracking_support.py` → `ball_detection_runtime.detector.AdaptiveBallDetector`
-5. `--inference-backend hailort` → `ball_detection_runtime/hailort_backend.py`
-6. HailoRT 後端 → `best/algorithm/hailo_model/best.hef`
-7. 正式標定 → `best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json`
-8. `--debug-page` → `best/debug_page`（Flask 模板與靜態資源）
-9. `--wifi-stream` → `best/WIFI_test/mjpeg_stream.py`
-10. `/dev/ttyUSB0` → `algorithm/io/runtime.py` 的串口遙測與 BALL_STATE 發送
+除資產的相對路徑和四個粗 ROI 配置值外，正式命令所讀 TOML 參數值逐項不變。HEF 與原始 metadata 的內容不變。圖像真正裁切來自標定 JSON 的 `(128,425,1141,121)`；舊 TOML 寫 `(129,422,1143,124)`，且 `require_matching_source_roi()` 的相等檢查位於另一函式 `return` 後，實際不執行。本輪改為與 JSON 一致並恢復檢查，不換取像區域。
 
-## 關鍵行為核對
+## 12–30° 生效標定與驗證邊界
 
-- 推理後端：原生 HailoRT；模型是 `best.hef`，固定輸入 `128x640`。
-- 檢測週期：`detection_interval=1`，每幀呼叫 HAT 推理。
-- 球心輸出：`measurement_center="bbox"`，厘米位置取 YOLO bbox 中心。
-- 卡爾曼：命令沒有 `--enable-kalman`，其 `store_true` 預設為 `False`；正式輸出走原始測量分支，不做樹莓派端卡爾曼濾波。
-- 霍夫圓：此運行閉包內沒有 `cv2.HoughCircles`。
-- 注意：`precision` 檢測器仍會執行來源程式既有的 RANSAC 圓擬合/快取；正式 tracker 因 `measurement_center="bbox"` 不採用該圓心。這是原始命令的真實行為，本整理未擅自刪改。
-- 顯示：`--no-display` 關閉本機 OpenCV 視窗；Debug Page 與 Wi-Fi MJPEG 仍啟用。
+本地鏡像的 active JSON 已採用樹莓派 `/home/ikun/vision_workspace/workspace_26h_remake/calibration/output/roi_128x640/dynamic_calibration.json` 的完整實測標定：`samples` 為 12、14、…、30°十個角度，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。來源 ROI 與此前相同；14–30°九個原有樣本逐項相同。此前九樣本 JSON 的 ID 為 `b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad`，其中 12°僅是範圍標記，實際採用 14°樣本。新版在 12°真正使用 12°樣本，12–14°之間按兩個樣本插值。
 
-## 12–30°資料與標定證據
+2405 組封存訓練資料（包括 12°組）的採集記錄仍是舊幾何 ID，未改寫；HEF 也未重新編譯。幾何 ID 差異不能單獨證明 HEF 不兼容，亦不能證明兼容。部署到樹莓派測試工作區後，須實測 12°及其附近的圖像、坐標、valid 和 Task1；本地 JSON/單元測試通過不等於此項實機驗證通過。
 
-- Hailo 模型的 `metadata.yaml` 明寫訓練來源為 `roi_ball_128x640_angle12/roi_ball.yaml`。
-- 原鏡像中的對應 ROI 資料目錄由 `angle12_exp10`、`angle14_exp10` 一直到 `angle30_exp10`。
-- 正式命令實際載入的標定 JSON 明寫 `angle_range_deg: [12.0, 30.0]`。
-- 該 JSON 內實際標定樣本是 `14,16,18,20,22,24,26,28,30`，metadata 同時標記 `test_only=true`、`angle_source=manual_assumed`。這個差異來自原始檔案，未被本整理修飾或補造。
-- **待核對的本地鏡像不一致：**`best/algorithm/config.toml` 中的相機 ROI 是 `(129,422,1143,124)`，但本地 active JSON 記錄 `(128,425,1141,121)`。`tracking_setup.py` 啟動時要求兩者一致，因此不能僅憑文件名判定這份本地鏡像可直接替換目前正在正常運行的樹莓派工作區。須先對照實機現行配置；沒有重新標定與驗證前，不改寫 JSON 或正式配置。
-- 訓練圖片與標註不會在正式推理時被讀取；它們只作為來源資料保存在本地 `26H_Remake_Support/Data/Training`。正式進程使用的是已編譯 HEF、模型 metadata 和生效標定 JSON。
-- PT 到 Hailo HEF 的轉換在本地虛擬機完成，暫不在本運行包中記錄生成命令；此處只對實機使用的 `best.hef` 做溯源。
+`assets/models/hailo/metadata.yaml` 是編譯成品自帶 metadata，內含舊 Windows 訓練路徑；這是來源記錄，不是當前運行的路徑配置。此包沒有 `deployment.json`，Hailo 模型與標定幾何不能由程式自動驗證，實機驗收時必須人工核對。
 
-## 樹莓派實機來源核驗
+## 驗證邊界
 
-第一份 `D:\26H-remake\_pi_raw` 只含 `best`，缺少正式程式會從工作區根目錄匯入的兩個檢測套件，因此不能單獨構成完整運行環境。
-
-其後從樹莓派重新取得 `D:\26H-remake\_pi_raw_new`。實機環境記錄確認以下模組全部直接來自 `/home/ikun/vision_workspace/workspace`：
-
-- `ball_detect_yolo`
-- `ball_detect_yolo_combind`
-- `ball_detect_yolo_combind.detector`
-- `ball_detect_yolo_combind.hailort_backend`
-
-整理前的 41 個正式運行來源檔已與 `_pi_raw_new` 逐檔進行 SHA-256 比對，差異數為 0。因此程式、HEF 和標定 JSON 均源自樹莓派實際版本，不依賴候選歷史版本或本機推測。
-
-## 溯源後的指向性重命名
-
-以下改名只改目錄、模組引用與配置路徑，不替換檢測算法、模型或標定內容：
-
-- `ball_detect_yolo` → `ball_detection_common`
-- `ball_detect_yolo_combind` → `ball_detection_runtime`
-- `best/algorithm/best_hailo_model` → `best/algorithm/hailo_model`
-- `best/algorithm/no_m0/calibration_output/roi_128x640/dynamic_calibration_no_m0.json` → `best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json`
-
-`no_m0` 原本是歷史上的「不依賴 MSPM0、人工提供角度」命名，但該目錄在正式命令中實際承擔的是 12–30°視覺標定資料，因此改為 `calibration_data`。重命名前的實機模組名稱與絕對路徑仍原樣保存在 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt`，作為來源證據，不隨整理結果改寫。
-
-標定來源照片按用途分到 Support 的 `Data/Calibration/angle_12_30deg/source_images` 與 `rectified_images`。角點、位置映射與透視資料原本就保存在生效 JSON 的 `samples` 中，來源沒有獨立點位 TXT，因此未人工生成替代文件。
-
-Support 的 `Data/Training/steel_ball_12_30deg_exp10` 保存從原鏡像 `no_m0/roi_dataset_128x640` 溯源出的 2405 張訓練輸入圖與 2405 個一一配對的 YOLO TXT，按 12、14、16、18、20、22、24、26、28、30°和曝光值 10 分組。未標註圖、source ROI 與其他中間圖不屬於這批訓練對，沒有混入。
-
-另外同步了已在實機測試流程中確認的兩個本地修正：`io/runtime.py` 不再因遙測請求而注入假的零值 BALL_STATE；`app/balance_runtime.py` 增加診斷 CSV 欄位。兩者均不改動 Hailo 推理、bbox 球心、RANSAC 執行條件或控制參數。
-
-實機記錄同時確認：Python 3.13.5、HailoRT 4.23.0、NumPy 2.2.4、OpenCV 4.10.0、pyserial 3.5、Flask 3.1.3。完整輸出保存為 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt`。
-
-## 明確捨棄
-
-- `algorithm_versions/` 歷史封存與壓縮包
-- `__pycache__/`、`.pytest_cache/`、測試、示例、基準、採集與標註工具
-- 未標註圖、非訓練中間圖、訓練輸出與舊模型（正式 2405 組訓練對和 20 張標定核對圖除外）
-- NCNN 模型與原生 NCNN 擴充（本命令固定 HailoRT）
-- TFT、serial_moni、舊標定、標定圖片、Hailo 日誌
-- `hailo`（Ultralytics）後端；只保留命令使用的 `hailort` 原生後端
-
-## 2026-09-24 配置及目錄脈絡整理
-
-本地 `best/algorithm/config.toml` 刪除九個不被正式 `track_ball.py` 讀取的離線／舊入口分組：`control`、`manual_angle_tracking`、`calibration`、`formal_calibration`、`manual_angle_calibration`、`roi_capture`、`training`、`dataset_prepare`、`ncnn_export`。正式命令實際讀取的 `vision_geometry`、`tracking`、`detector`、`tracker`、`debug`、`formal_tracking` 六組鍵值逐項比對相同。未修改 Python、HEF、active JSON 或實機工作區。
-
-`PROJECT_STRUCTURE.md` 及各級 README 標明現存模組的責任與保留理由；對被現有導入鏈引用的 `ncnn_backend.py`、`control/balance.py` 等不做推測性刪除或改名。
-
-## 部署位置
-
-把本目錄內容放到樹莓派的 `~/vision_workspace/workspace`。虛擬環境仍位於 `~/vision_workspace/.venv`，不包含在此原始碼/模型運行包中。
-
-`SHA256SUMS.txt` 記錄整理後每個檔案的 SHA-256，可用於傳輸後核對。
+本地可驗證：Python 導入、CLI、六組 TOML 解析、資產路徑、十個實際角度樣本、ROI 相等檢查、SHA-256。只有樹莓派可驗證：實際相機、HailoRT、串口發包、約 60 FPS、valid、座標質量和 Task1。12°實機回歸前，不應覆蓋原本已跑通的 `~/vision_workspace/workspace`。

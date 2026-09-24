@@ -3,10 +3,10 @@
 version = 1
 
 [vision_geometry]
-source_roi_x = 129
-source_roi_y = 422
-source_roi_width = 1143
-source_roi_height = 124
+source_roi_x = 128
+source_roi_y = 425
+source_roi_width = 1141
+source_roi_height = 121
 
 [calibration]
 angles = "12,14,16,18,20,22,24,26,28,30"

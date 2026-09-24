@@ -1,56 +1,26 @@
-# 運行包結構與依賴邊界
-
-部署位置是樹莓派的 `~/vision_workspace/workspace`。先看根目錄 `README.md` 的啟動命令；下圖是磁盤上的真實結構，不是計劃中的重命名。
+# 運行架構與路徑
 
 ```text
-workspace/
-├─ best/                       正式應用
-│  ├─ run.py                   唯一正式啟動入口
-│  ├─ algorithm/               運行配置、標定、追蹤、通信與流程編排
-│  │  ├─ app/                  運行組裝與循環
-│  │  ├─ calibration_data/     正式進程載入的生效標定 JSON
-│  │  ├─ control/              可選上位機控制器實現；Task1 實際控制在 STM32
-│  │  ├─ core/                 標定、估算與追蹤核心
-│  │  ├─ formal/               正式追蹤入口實現
-│  │  ├─ hailo_model/          Hailo HEF 與模型 metadata
-│  │  └─ io/                   相機、串口與角度遙測
-│  ├─ debug_page/              Web 調試頁
-│  └─ WIFI_test/               --wifi-stream 所需的 Wi-Fi MJPEG 串流
-├─ ball_detection_common/      共用檢測型別、基礎檢測與圓擬合
-└─ ball_detection_runtime/     正式自適應檢測器及 HailoRT/NCNN 後端
+best/run.py (相容入口)
+  → ballbeam/app/main.py
+      → app/tracking_setup.py + app/tracking_loop.py
+      → vision/calibration.py + vision/tracker.py
+      → vision/detection_runtime/detector.py
+      → vision/detection_runtime/hailort_backend.py
+      → assets/models/hailo/best.hef
+      → hardware/runtime.py (相機、角度遙測、BALL_STATE)
+      → interfaces/debug_page + interfaces/wifi_stream
 ```
 
-`best/algorithm/README.md` 逐一說明 app、core、control、io 和模型資料的責任。`WIFI_test`、`formal`、`control` 等舊名稱雖不夠直觀，但已被 Python 直接導入；為避免改變已跑通命令，本次通過文檔明確職責，沒有為美觀而搬動運行模組。
+| 目錄 | 職責 | 復用時要替換甚麼 |
+|---|---|---|
+| `ballbeam/app/` | 設定、逐幀流程、結果發送、probe | 任務編排與對外數據格式 |
+| `ballbeam/vision/` | 幾何標定、bbox 球心、追蹤、推理後端 | 模型、ROI、標定與目標類型 |
+| `ballbeam/hardware/` | 固定 USB 相機與下位機串口 | 設備節點、時序與協議適配 |
+| `ballbeam/interfaces/` | 只讀調試頁及串流 | 頁面或網絡接口；不可另開相機 |
+| `config/` | 正式命令的 TOML 參數 | 新機構的相機及串口參數 |
+| `assets/` | 與本機構綁定的生效 JSON、HEF | 整套重新校驗，不能單檔替換 |
 
-正式 HailoRT 調用鏈：
+`vision/detection_common` 是來源程式的基礎檢測型別及圓擬合；`vision/detection_runtime` 是現行自適應檢測和 HailoRT。`ncnn_backend.py` 仍提供 Hailo 後端使用的圖像尺寸/letterbox 函式，不能因命令選擇 Hailo 就直接刪除。`control/balance.py` 被現有發送/診斷模組導入；實際閉環控制仍屬 MCU。
 
-```text
-best/run.py
-→ best/algorithm/formal/track_ball.py
-→ best/algorithm/app/tracking_support.py
-→ ball_detection_runtime/detector.py
-→ ball_detection_runtime/hailort_backend.py
-→ best/algorithm/hailo_model/best.hef
-```
-
-本地正式配置指向的標定文件：
-
-```text
-best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json
-```
-
-訓練資料、標定照片和離線工具保存在本地同級工程 `26H_Remake_Support`；部署到樹莓派時它可位於 `~/vision_workspace/26H_Remake_Support`，但不會被正式運行命令載入。
-
-PT 到 Hailo HEF 的轉換在本地虛擬機完成；本運行包只保存正式使用的 `best.hef` 和 `metadata.yaml`。
-
-`RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt` 保留重命名前的實機模組來源，是不可改寫的溯源證據。
-
-## 依賴閉包核對與保留理由
-
-- `ball_detection_runtime/ncnn_backend.py` 不能因正式後端是 HailoRT 就直接刪除：`hailort_backend.py` 仍導入它的 letterbox／尺寸處理函數，`tracking_support.py` 也導入後端探測函數。
-- `ball_detection_common/circle_refine.py` 是正式自適應檢測器現有 RANSAC/refinement 路徑的依賴；bbox 作為最終球心來源不等於此模組未執行。
-- `ball_detection_common/detector.py`、`visualization.py` 由套件 `__init__.py` 導出。它們不是本命令的主要球心計算路徑，但刪除前須先改套件介面並在樹莓派回歸測試；這次不冒險移除。
-- `core/estimator.py`、`control/balance.py` 同樣在導入閉包中。正式命令未啟用 Kalman 或上位機執行器控制，不代表可以直接刪除被其他模組引用的文件。
-- `debug_page/`、`WIFI_test/` 分別由 `--debug-page`、`--wifi-stream` 明確要求，均保留。鏡像沒有訓練照片、CSV 記錄、離線訓練入口或舊標定照片。
-
-正式 `config.toml` 清理後只含上述命令實際讀取的六個分組；清理前後六組鍵值完全相同。這是配置與文檔整理，不是算法改寫。
+目前 `hardware/runtime.py` 和 `app/balance_runtime.py` 仍偏大，屬下一層模組拆分工作；這次先完成實際包歸位。拆分其內部類別前，需要樹莓派時序回歸測試，不能僅憑本地導入成功宣稱等價。

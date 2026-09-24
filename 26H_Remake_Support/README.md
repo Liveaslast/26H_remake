@@ -35,13 +35,13 @@
 5. ROI 選取、幾何標定和實機圖像採集在樹莓派執行；Windows 負責標註、資料整理、訓練和 CSV 分析。
 6. PT 到 Hailo HEF 在本地虛擬機完成，暫不在本倉庫展開。
 
-## 待處理：12° 標定與現行模型對齊
+## 生效 12–30° 標定與實機核對
 
-2026-09-24 核對樹莓派原始文件後確認：
+2026-09-24 核對並更新本地鏡像：
 
-- 完整標定位於樹莓派 `/home/ikun/vision_workspace/workspace_26h_remake/calibration/output/roi_128x640/dynamic_calibration.json`，含 12、14、…、30° 十個實測樣本，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。本地只讀候選副本是 `D:\26H-remake\calibration_complete_12_30.json`。
-- 樹莓派目前正式工作區使用的 `best/algorithm/no_m0/calibration_output/roi_128x640/dynamic_calibration_no_m0.json`、本地 Raspberry 鏡像及 Support 的 `Data/Calibration/active` 仍是 14–30°九樣本，`geometry_id=b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad`。新版除新增 12°外，原有九個樣本逐項相同。
-- 現存 2405 組訓練資料（含 12°組）的 `capture_session.json` 記錄舊 `geometry_id=b5db…`；只替換正式 JSON 會改變 12–14°的展開輸入，不能假定現有 HEF 與它完全對齊。
-- 樹莓派現行 `config.toml` 和本地 Raspberry 鏡像的粗 ROI 均為 `(129,422,1143,124)`，兩份標定 JSON 記錄 `(128,425,1141,121)`。實機目前能運行的原因尚需對照實際啟動參數和運行路徑，不要按推測修改配置。
+- 完整標定來自樹莓派 `/home/ikun/vision_workspace/workspace_26h_remake/calibration/output/roi_128x640/dynamic_calibration.json`，含 12、14、…、30° 十個實測樣本，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。已放入本地 Raspberry 鏡像 `assets/calibration/dynamic_calibration_12_30deg.json`，並同步到 Support `Data/Calibration/active/dynamic_calibration_12_30deg.json`。
+- 此前九樣本版本的 `geometry_id=b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad`。新舊 JSON 的粗 ROI 及 14–30°九個樣本相同；新 JSON 在 12°真正選取 12°樣本，12–14°之間按兩個樣本插值。
+- 現存 2405 組訓練資料（含 12°組）的 `capture_session.json` 仍記錄舊幾何 ID；HEF 未重新編譯。不能僅靠檔案檢查判定模型與新 12–14°展開是否匹配，須在樹莓派測試工作區實測該角度段的圖像、坐標及 valid。
+- 舊樹莓派工作區的 TOML 粗 ROI 是 `(129,422,1143,124)`，生效 JSON 記錄 `(128,425,1141,121)`。已查明舊代碼的相等檢查錯放於 `return` 後，因此實際裁切始終使用 JSON ROI；本地重構鏡像的 TOML 已對齊現行 JSON，並恢復檢查。**這是本地修正，不表示已修改樹莓派正在運行的工作區。**
 
-**目前決定：保持樹莓派現行工作區、本地正式鏡像的 active JSON、模型及視覺參數不變。**本地運行鏡像可整理不參與正式命令的文檔與配置分組。有空時先核實現行命令究竟讀取哪份配置、對比 12–14°的圖像效果及訓練幾何，再決定是否把完整標定提升為 active；不得僅憑檔名直接覆蓋。
+**修改只發生在本地鏡像，沒有上傳或覆蓋樹莓派現行工作區。**實機 12°附近通過前，先在獨立測試工作區驗證，不要直接替換已跑通的正式進程。原本穩定的 Task1 測試不等同於 12°端點測試。

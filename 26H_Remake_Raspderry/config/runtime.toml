@@ -10,14 +10,14 @@ version = 1
 
 [vision_geometry]
 # 相机仍采集完整1280x720；所有标定、采集和推理共享同一固定粗ROI。
-source_roi_x = 129
-source_roi_y = 422
-source_roi_width = 1143
-source_roi_height = 124
+source_roi_x = 128
+source_roi_y = 425
+source_roi_width = 1141
+source_roi_height = 121
 
 [tracking]
 # NCNN模型目录。矩形模型尺寸默认从metadata.yaml读取，image_size=0表示自动读取。
-model = "../model/ncnn_model"
+model = "../assets/models/ncnn_model"
 image_size = 0
 # 正式模型必须与采集/训练的矩形输入一致。
 model_width = 640
@@ -53,7 +53,7 @@ no_display = false
 # 默认使用树莓派 Hailo AI HAT 的原生 HailoRT 后端；需要回退时可在命令行传
 # --inference-backend ncnn。
 inference_backend = "hailort"
-hailo_model = "hailo_model"
+hailo_model = "../assets/models/hailo"
 ncnn_backend = "auto"
 ncnn_threads = 2
 # precision精度优先；balanced/performance必须用动态录像对比后再启用。
@@ -109,7 +109,7 @@ debug_port = 8000
 debug_max_points = 1000
 
 [formal_tracking]
-calibration = "calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json"
+calibration = "../assets/calibration/dynamic_calibration_12_30deg.json"
 # Current Bluetooth transparent serial link is connected through a CH340/CH341
 # USB-TTL adapter, which enumerates as /dev/ttyUSB0 on the Raspberry Pi.
 port = "/dev/ttyUSB0"

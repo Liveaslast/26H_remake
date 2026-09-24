@@ -12,9 +12,9 @@ import numpy as np
 
 from .tracking_setup import TrackingComponents
 from .tracking_support import format_result
-from ..core.calibration import DynamicCalibrationError
-from ..core.tracker import DynamicTrackingResult, draw_tracking_overlay
-from ..io.runtime import FrameRateMeter
+from ..vision.calibration import DynamicCalibrationError
+from ..vision.tracker import DynamicTrackingResult, draw_tracking_overlay
+from ..hardware.runtime import FrameRateMeter
 
 
 @dataclass(frozen=True, slots=True)

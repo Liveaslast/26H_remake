@@ -12,6 +12,6 @@
 
 `by_angle/<angle>/images` 與 `labels` 是實際訓練對；`source_records` 保留原始采集 session 和逐幀 metadata，用於溯源。metadata 也記錄了原始未標註圖及中間圖路徑，但那些文件未混入本訓練資料集。
 
-`Vision/APP/build_yolo_dataset.py` 可直接讀取這十個 `by_angle/angle_*` 目錄：若根目錄沒有 `session.json`，就從 `source_records/capture_session.json` 取得原有 `geometry_id`，不修改封存資料。已逐一校驗 2405 組圖片/標註和單一幾何 ID；這只證明資料格式一致，**不表示**它與另一份十樣本候選標定或 HEF 自動匹配。完整命令見 `../../../Docs/COMMANDS.md`。
+`Vision/APP/build_yolo_dataset.py` 可直接讀取這十個 `by_angle/angle_*` 目錄：若根目錄沒有 `session.json`，就從 `source_records/capture_session.json` 取得原有 `geometry_id`，不修改封存資料。已逐一校驗 2405 組圖片/標註和單一幾何 ID；這只證明資料格式一致，**不表示**它與目前生效的十樣本標定或 HEF 自動匹配。完整命令見 `../../../Docs/COMMANDS.md`。
 
 原圖是在連接實際相機與機構的樹莓派上採集；框選、資料集整理和 YOLO 訓練在 Windows 完成。正式樹莓派進程不讀取本目錄，而是載入已編譯的 `best.hef`。

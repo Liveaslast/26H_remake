@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 
-from ..core.tracker import DynamicTrackingResult
+from ..vision.tracker import DynamicTrackingResult
 
 
 @dataclass(frozen=True, slots=True)

@@ -99,7 +99,7 @@ $sourceArgs = foreach ($dir in $angleDirs) { '--source'; $dir.FullName }
 python Vision\APP\build_yolo_dataset.py @sourceArgs --output-dir Data\Training\Prepared
 ```
 
-此命令只會在空的 `Prepared` 生成副本；封存資料仍留在 `by_angle`。讀取 `geometry_id` 時，先看會話根目錄 `session.json`，否則讀 `source_records/capture_session.json`。它校驗的是資料內部一致性，**不會**解決 Support README 記錄的十樣本候選標定與現行模型幾何對齊問題。
+此命令只會在空的 `Prepared` 生成副本；封存資料仍留在 `by_angle`。讀取 `geometry_id` 時，先看會話根目錄 `session.json`，否則讀 `source_records/capture_session.json`。它校驗的是資料內部一致性，**不會**證明目前十樣本生效標定與現行模型的幾何匹配。
 
 將基礎模型放到 Windows 的 `Data\Training\Models\yolo26n.pt`，再訓練：
 
@@ -123,7 +123,7 @@ python Vision\APP\rename_dataset_files.py
 
 正式運行包內容必須直接位於 `~/vision_workspace/workspace`；僅把鏡像上傳到旁邊不會改變下列命令實際運行的代碼。
 
-這條命令啟動時，程式會打開 `~/vision_workspace/workspace/best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json` 取得角度與座標映射；這就是「載入標定」。上面拍攝流程產生的 `generated/dynamic_calibration_manual.json` 不會自動改變此文件或正在運行的效果。
+部署新版 Raspberry 運行包後，這條命令會打開 `~/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json` 取得角度與座標映射。尚未替換的樹莓派舊工作區仍使用其原路徑，**把新版鏡像放在旁邊不會改變現行進程**。上面拍攝流程產生的 `generated/dynamic_calibration_manual.json` 不會自動改變生效文件或運行效果。
 
 ```bash
 cd ~/vision_workspace/workspace

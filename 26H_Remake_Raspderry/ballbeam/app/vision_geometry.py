@@ -7,7 +7,7 @@ import argparse
 import cv2
 import numpy as np
 
-from ..core.calibration import DynamicCalibrationError, SourceRoi
+from ..vision.calibration import DynamicCalibrationError, SourceRoi
 
 
 def add_source_roi_arguments(parser: argparse.ArgumentParser) -> None:
@@ -48,6 +48,11 @@ def require_matching_source_roi(
         raise DynamicCalibrationError(
             "标定文件没有固定粗ROI；请使用当前1280x256方案重新标定"
         )
+    if calibration_roi != configured_roi:
+        raise DynamicCalibrationError(
+            f"配置粗ROI={configured_roi.xywh} 与标定粗ROI="
+            f"{calibration_roi.xywh} 不一致"
+        )
 
 
 def draw_source_roi_overlay(
@@ -81,11 +86,6 @@ def draw_source_roi_overlay(
         cv2.LINE_AA,
     )
     return canvas
-    if calibration_roi != configured_roi:
-        raise DynamicCalibrationError(
-            f"配置粗ROI={configured_roi.xywh} 与标定粗ROI="
-            f"{calibration_roi.xywh} 不一致"
-        )
 
 
 __all__ = [

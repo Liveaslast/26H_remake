@@ -11,8 +11,8 @@ from typing import Any
 
 import numpy as np
 
-from ..core.tracker import DynamicTrackingResult
-from ..io.runtime import RuntimeIOError
+from ..vision.tracker import DynamicTrackingResult
+from ..hardware.runtime import RuntimeIOError
 from ..paths import WORKSPACE_ROOT
 
 
@@ -105,7 +105,7 @@ def load_detector(
         if args.hailo_model is None:
             raise RuntimeIOError(
                 "Hailo后端需要指定 --hailo-model，例如 "
-                "best/algorithm/hailo_model"
+                "assets/models/hailo"
             )
         model_path = args.hailo_model.expanduser().resolve()
     else:
@@ -173,19 +173,23 @@ def load_detector(
     circle_backend = "python"
 
     try:
-        from ball_detection_runtime.detector import (
+        from ..vision.detection_runtime.detector import (
             AdaptiveBallDetector,
             detector_config_for_mode,
         )
-        from ball_detection_runtime.ncnn_backend import (
+        from ..vision.detection_runtime.ncnn_backend import (
             native_ncnn_available,
             native_ncnn_import_error,
         )
     except ImportError as adaptive_error:
+        if inference_backend in ("hailo", "hailort"):
+            raise RuntimeIOError(
+                "Hailo 检测模块导入失败；拒绝静默切换识别后端"
+            ) from adaptive_error
         if requested_backend == "cpp":
             raise RuntimeIOError(
                 "C++ backend package is unavailable. Keep "
-                "ball_detection_runtime beside best/."
+                "ballbeam.vision.detection_runtime 模块。"
             ) from adaptive_error
         print(
             "WARNING: adaptive detector is unavailable; falling back to "
@@ -194,7 +198,7 @@ def load_detector(
             flush=True,
         )
         try:
-            from ball_detection_common import BallDetector, BallDetectorConfig
+            from ..vision.detection_common import BallDetector, BallDetectorConfig
             from ultralytics import YOLO
         except ImportError as exc:
             raise RuntimeIOError(
@@ -311,7 +315,7 @@ def add_detector_performance_arguments(
     parser.add_argument(
         "--hailo-model",
         type=Path,
-        default=WORKSPACE_ROOT / "best" / "algorithm" / "hailo_model",
+        default=WORKSPACE_ROOT / "assets" / "models" / "hailo",
         help="Ultralytics Hailo export directory containing best.hef",
     )
     parser.add_argument("--ncnn-threads", type=int)

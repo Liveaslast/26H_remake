@@ -15,8 +15,37 @@
     "height_px": 200
   },
   "maximum_angle_margin_deg": 0.35,
-  "geometry_id": "b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad",
+  "geometry_id": "8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f",
   "samples": [
+    {
+      "angle_deg": 12.0,
+      "source_corners_px": [
+        [
+          19.0,
+          15.0
+        ],
+        [
+          1074.0,
+          5.0
+        ],
+        [
+          1078.0,
+          92.0
+        ],
+        [
+          17.0,
+          101.0
+        ]
+      ],
+      "position_mapping": {
+        "model": "quadratic",
+        "coefficients": [
+          -1.0108450565355257e-06,
+          -0.024687798044608945,
+          12.796483126751488
+        ]
+      }
+    },
     {
       "angle_deg": 14.0,
       "source_corners_px": [
@@ -284,6 +313,7 @@
     "angle_source": "manual_assumed",
     "created_local_time": "2026-08-03 18:58:16",
     "requested_angles_deg": [
+      12.0,
       14.0,
       16.0,
       18.0,
@@ -302,10 +332,8 @@
       10.0
     ],
     "rod_length_cm": 25.0,
-    "groove_width_cm": 1.3
-  },
-  "angle_range_deg": [
-    12.0,
-    30.0
-  ]
+    "groove_width_cm": 1.3,
+    "appended_angle_deg": 12.0,
+    "appended_local_time": "2026-09-15 16:57:25"
+  }
 }

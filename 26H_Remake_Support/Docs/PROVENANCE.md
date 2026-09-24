@@ -4,7 +4,7 @@
 
 - 訓練集來自 `D:\26H-remake\_pi_raw\best\algorithm\no_m0\roi_dataset_128x640`：2405 張 640×128 PNG 與 2405 個同名 YOLO TXT。
 - 標定圖片來自 `D:\26H-remake\_pi_raw\best\algorithm\no_m0\calibration_output\roi_128x640`：10 張來源圖與 10 張展開圖。
-- `Data/Calibration/active/dynamic_calibration_12_30deg.json` 精確複製自 `26H_Remake_Raspderry/best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json`，只供工具復現與校驗。
+- `Data/Calibration/active/dynamic_calibration_12_30deg.json` 與本地 `26H_Remake_Raspderry/assets/calibration/dynamic_calibration_12_30deg.json` 內容相同，只供工具復現與校驗；舊鏡像中的路徑是 `best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json`。
 - `Data/TestRecords` 是本次視覺延遲、有效率、座標跳變及 Task1 驗證時實際生成的 8 份 CSV。
 
 ## 視覺工具映射

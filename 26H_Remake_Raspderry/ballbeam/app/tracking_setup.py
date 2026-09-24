@@ -16,9 +16,9 @@ from .vision_geometry import (
     require_matching_source_roi,
     source_roi_from_args,
 )
-from ..core.calibration import DynamicCalibration, SourceRoi
-from ..core.tracker import DynamicBallTracker, DynamicTrackerConfig
-from ..io.runtime import CameraMode, FixedUSBCamera, RuntimeIOError
+from ..vision.calibration import DynamicCalibration, SourceRoi
+from ..vision.tracker import DynamicBallTracker, DynamicTrackerConfig
+from ..hardware.runtime import CameraMode, FixedUSBCamera, RuntimeIOError
 
 
 @dataclass(frozen=True, slots=True)

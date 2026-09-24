@@ -17,6 +17,7 @@
 /calibration_complete_12_30.json
 /calibration_pi_active.json
 /config_pi_active.toml
+/_local_backups/
 
 # Runtime archive
 /vision_runtime_trace.tar.gz

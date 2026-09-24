@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Short launcher for the formal Raspberry Pi tracking application."""
+"""Compatibility launcher: keep the verified Raspberry Pi command working."""
 
 from pathlib import Path
 import sys
 
-BEST_DIR = Path(__file__).resolve().parent
-if str(BEST_DIR) not in sys.path:
-    sys.path.insert(0, str(BEST_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from algorithm.formal.track_ball import main  # noqa: E402
+from ballbeam.app.main import main  # noqa: E402
 
 
 if __name__ == "__main__":

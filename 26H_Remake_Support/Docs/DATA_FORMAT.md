@@ -7,7 +7,7 @@
 - `Data/Calibration/angle_12_30deg/rectified_images`：對應展開圖，共 10 張。
 - `Data/Calibration/generated`：在樹莓派重新標定時的新結果暫存位置。
 
-正式 JSON 的生效範圍是 12–30°，實際 `samples` 為 14、16、18、20、22、24、26、28、30°。角點和位置映射均在 JSON 中，原始資料沒有獨立點位 TXT。
+本地正式鏡像與此參考副本的 JSON 實際 `samples` 均為 12、14、16、18、20、22、24、26、28、30°，並非僅在檔名或範圍寫 12–30°。角點和位置映射均在 JSON 中，原始資料沒有獨立點位 TXT。
 
 ## Training
 
@@ -19,7 +19,7 @@
 
 完整資料為 2405 張圖片和 2405 個配對標籤。
 
-資料集整理腳本先讀會話根目錄的 `session.json`；沒有時才讀封存的 `source_records/capture_session.json`。因此這十個 `by_angle/angle_*` 目錄可直接逐一作為 `--source`，原始記錄和標註均不需搬移或改寫。整理時仍會校驗圖片尺寸、標註、重複圖及 `geometry_id`；此兼容處理**不代表**舊資料與候選的十樣本標定 JSON 幾何一致。
+資料集整理腳本先讀會話根目錄的 `session.json`；沒有時才讀封存的 `source_records/capture_session.json`。因此這十個 `by_angle/angle_*` 目錄可直接逐一作為 `--source`，原始記錄和標註均不需搬移或改寫。整理時仍會校驗圖片尺寸、標註、重複圖及 `geometry_id`；此兼容處理**不代表**舊資料與現在生效的十樣本標定 JSON 幾何一致。
 
 ## 下位機 CSV 模式
 

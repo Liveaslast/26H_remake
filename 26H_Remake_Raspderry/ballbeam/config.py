@@ -15,8 +15,8 @@ import tomllib
 from typing import Any, Iterable, Sequence
 
 
-ALGORITHM_DIR = Path(__file__).resolve().parent
-DEFAULT_CONFIG_PATH = ALGORITHM_DIR / "config.toml"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "runtime.toml"
 CONFIG_VERSION = 1
 FORBIDDEN_CONFIG_KEYS = frozenset({"enable_balance_control", "clear_estop"})
 
@@ -54,7 +54,7 @@ def add_config_argument(parser: argparse.ArgumentParser) -> None:
         type=Path,
         default=DEFAULT_CONFIG_PATH,
         help=(
-            "TOML参数文件；未指定时加载algorithm/config.toml。"
+            "TOML参数文件；未指定时加载config/runtime.toml。"
             "命令行显式参数优先于文件值"
         ),
     )

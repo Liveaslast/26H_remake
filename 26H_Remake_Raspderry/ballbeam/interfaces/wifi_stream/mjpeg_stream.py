@@ -14,8 +14,6 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
-from pathlib import Path
-import sys
 import threading
 import time
 from typing import Any
@@ -24,14 +22,7 @@ from urllib.parse import urlsplit
 import cv2
 import numpy as np
 
-# Keep the Wi-Fi test tools in their own folder while reusing the algorithm's
-# strict V4L2 camera-mode checks.  Adding ``best`` makes direct execution via
-# ``python3 WIFI_test/mjpeg_stream.py`` work as well as package imports.
-BEST_DIR = Path(__file__).resolve().parent.parent
-if str(BEST_DIR) not in sys.path:
-    sys.path.insert(0, str(BEST_DIR))
-
-from algorithm.io.runtime import (  # noqa: E402
+from ...hardware.runtime import (
     CameraMode,
     FixedUSBCamera,
     RuntimeIOError,

@@ -10,7 +10,7 @@ from typing import Any, Callable, Literal
 import numpy as np
 import cv2
 
-from ball_detection_common.circle_refine import CircleRefineConfig, refine_circle
+from ..detection_common.circle_refine import CircleRefineConfig, refine_circle
 
 from .models import AdaptiveFrameDetection, BallDetection, Box, CircleRefinement, StageTimings
 

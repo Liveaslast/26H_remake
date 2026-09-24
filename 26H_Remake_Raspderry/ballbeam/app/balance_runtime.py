@@ -15,8 +15,8 @@ from ..control.balance import (
     BalanceController,
     BalanceControllerConfig,
 )
-from ..core.tracker import DynamicTrackingResult
-from ..io.runtime import RuntimeIOError
+from ..vision.tracker import DynamicTrackingResult
+from ..hardware.runtime import RuntimeIOError
 
 
 def start_debug_page(
@@ -28,7 +28,7 @@ def start_debug_page(
     """Lazily start DebugPage so normal operation does not require Flask."""
 
     try:
-        from debug_page import DebugPage
+        from ..interfaces.debug_page import DebugPage
     except ImportError as exc:
         raise RuntimeIOError(
             "缺少debug_page依赖；请安装best/debug_page/requirements.txt"

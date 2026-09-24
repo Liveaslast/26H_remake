@@ -5,36 +5,29 @@ from __future__ import annotations
 
 import argparse
 import math
-from pathlib import Path
-import sys
 
 import cv2
 
-if not __package__:
-    BEST_DIR = Path(__file__).resolve().parents[2]
-    if str(BEST_DIR) not in sys.path:
-        sys.path.insert(0, str(BEST_DIR))
-
-from algorithm.app.tracking_loop import FrameAngle, run_tracking_loop  # noqa: E402
-from algorithm.app.balance_runtime import (  # noqa: E402
+from .tracking_loop import FrameAngle, run_tracking_loop
+from .balance_runtime import (
     BallStateRuntime,
     VisionProbeLogger,
     add_ball_state_arguments,
     start_debug_page,
     validate_ball_state_arguments,
 )
-from algorithm.app.tracking_setup import (  # noqa: E402
+from .tracking_setup import (
     add_common_tracking_arguments,
     build_tracking_components,
     validate_common_tracking_args,
 )
-from algorithm.config import (  # noqa: E402
+from ..config import (
     add_config_argument,
     parse_args_with_config,
 )
-from algorithm.core.calibration import DynamicCalibrationError  # noqa: E402
-from algorithm.core.tracker import DynamicTrackingResult  # noqa: E402
-from algorithm.io.runtime import (  # noqa: E402
+from ..vision.calibration import DynamicCalibrationError
+from ..vision.tracker import DynamicTrackingResult
+from ..hardware.runtime import (
     RuntimeIOError,
     TelemetryAngleSource,
 )
@@ -43,8 +36,8 @@ from algorithm.io.runtime import (  # noqa: E402
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "actual_angle_deg 动态透视展开 + YOLO/NCNN + RANSAC圆心 "
-            "+ [x,vx]卡尔曼跟踪。"
+            "actual_angle_deg 动态透视展开 + Hailo/NCNN 检测；"
+            "正式坐标取 YOLO bbox 中心。"
         )
     )
     add_config_argument(parser)
@@ -211,13 +204,13 @@ def start_wifi_stream(args: argparse.Namespace):
     """Start WIFI_test in-process so tracking remains the only camera owner."""
 
     try:
-        from WIFI_test.mjpeg_stream import (
+        from ..interfaces.wifi_stream.mjpeg_stream import (
             MJPEGStreamConfig,
             MJPEGStreamServer,
         )
     except ImportError as exc:
         raise RuntimeIOError(
-            "无法导入WIFI_test；请保留best/WIFI_test目录及其依赖"
+            "无法导入 ballbeam.interfaces.wifi_stream 及其依赖"
         ) from exc
 
     try:
