@@ -24,8 +24,15 @@
 2. source ~/vision_workspace/.venv/bin/activate
 3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
-**(vision_ws)** 是提示符名稱，實際虛擬環境是 **~/vision_workspace/.venv**。生效 JSON 有 12、14、…、30°十個標定樣本，來源 ROI 為 **(128,425,1141,121)**。正式位置已實機啟動，12–14°視覺已觀察正常；
+**(vision_ws)** 是提示符名稱，實際虛擬環境是 **~/vision_workspace/.venv**。生效 JSON 有 12、14、…、30°十個標定樣本，來源 ROI 為 **(128,425,1141,121)**。正式位置已實機啟動，12–14°視覺已觀察正常；補入 12°後尚未重新記錄 Task1 驗證。
 
 ## 部署檢查
 
-在包根目錄執行 sha256sum -c SHA256SUMS.txt 和 python3 -B -m unittest discover -s tests -v。前者核對文件，後者檢查資產路徑、ROI 和真實角度樣本；它們不能代替相機、Hailo 與串口實機測試。模型未附 **deployment.json**，因此幾何 ID 不能由程式自動比對。
+下面四行都在**樹莓派終端**執行，不是在 Windows 或虛擬機。「包根目錄」就是 **/home/ikun/vision_workspace/workspace**；檢查所用的 **SHA256SUMS.txt** 和 **tests/** 都在這個目錄內。
+
+1. cd /home/ikun/vision_workspace/workspace
+2. source /home/ikun/vision_workspace/.venv/bin/activate
+3. sha256sum -c SHA256SUMS.txt
+4. python3 -B -m unittest discover -s tests -v
+
+第 3 行核對這份部署包的文件是否與清單一致；第 4 行運行不接設備的測試，檢查模型、標定文件路徑、ROI 和十個角度樣本。兩者都不能代替相機、Hailo 與串口的實機測試。模型幾何 ID 的核對邊界見 [PROVENANCE.md](PROVENANCE.md)。
