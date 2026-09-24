@@ -1,26 +1,23 @@
-# 運行架構與路徑
+# 運行架構
 
 ```text
-best/run.py (相容入口)
-  → ballbeam/app/main.py
-      → app/tracking_setup.py + app/tracking_loop.py
-      → vision/calibration.py + vision/tracker.py
-      → vision/detection_runtime/detector.py
-      → vision/detection_runtime/hailort_backend.py
-      → assets/models/hailo/best.hef
-      → hardware/runtime.py (相機、角度遙測、BALL_STATE)
-      → interfaces/debug_page + interfaces/wifi_stream
+best/run.py → ballbeam/app/main.py
+  ├─ app/tracking_setup.py + app/tracking_loop.py   相機幀、角度、識別、發送
+  ├─ vision/calibration.py                           動態透視與位置映射
+  ├─ vision/detection_runtime/                       HailoRT 推理
+  ├─ hardware/runtime.py                             USB 相機與下位機串口
+  └─ interfaces/{debug_page,wifi_stream}/            同進程調試介面
 ```
 
-| 目錄 | 職責 | 復用時要替換甚麼 |
+| 位置 | 責任 | 復用時需核對 |
 |---|---|---|
-| `ballbeam/app/` | 設定、逐幀流程、結果發送、probe | 任務編排與對外數據格式 |
-| `ballbeam/vision/` | 幾何標定、bbox 球心、追蹤、推理後端 | 模型、ROI、標定與目標類型 |
-| `ballbeam/hardware/` | 固定 USB 相機與下位機串口 | 設備節點、時序與協議適配 |
-| `ballbeam/interfaces/` | 只讀調試頁及串流 | 頁面或網絡接口；不可另開相機 |
-| `config/` | 正式命令的 TOML 參數 | 新機構的相機及串口參數 |
-| `assets/` | 與本機構綁定的生效 JSON、HEF | 整套重新校驗，不能單檔替換 |
+| `ballbeam/app/` | 正式流程、最新球狀態、probe | 任務編排和發送時序 |
+| `ballbeam/vision/` | ROI、標定、bbox 球心、追蹤、推理後端 | 相機幾何、模型輸入與檢測目標 |
+| `ballbeam/hardware/` | 相機、串口及角度遙測 | 設備節點與協議 |
+| `ballbeam/interfaces/` | DebugPage、MJPEG | 網絡接口；不另開相機 |
+| `config/runtime.toml` | 正式命令參數 | 新機構的設備和算法參數 |
+| `assets/` | 生效 JSON、HEF、metadata | 標定與模型需成套驗證 |
 
-`vision/detection_common` 是來源程式的基礎檢測型別及圓擬合；`vision/detection_runtime` 是現行自適應檢測和 HailoRT。`ncnn_backend.py` 仍提供 Hailo 後端使用的圖像尺寸/letterbox 函式，不能因命令選擇 Hailo 就直接刪除。`control/balance.py` 被現有發送/診斷模組導入；實際閉環控制仍屬 MCU。
+正式配置採用 HailoRT、每幀推理與 YOLO bbox 球心；不啟用霍夫圓或樹莓派 Kalman。來源中的 RANSAC refinement 路徑可能執行，但正式球位置仍取 bbox。`vision/detection_runtime/ncnn_backend.py` 含 Hailo 後端共用的尺寸／letterbox 輔助，不能只因選 Hailo 就刪除。閉環控制在 STM32，本包的 `control/` 是現有 Python 代碼依賴。
 
-目前 `hardware/runtime.py` 和 `app/balance_runtime.py` 仍偏大，屬下一層模組拆分工作；這次先完成實際包歸位。拆分其內部類別前，需要樹莓派時序回歸測試，不能僅憑本地導入成功宣稱等價。
+正式依賴與精確命令見 [README.md](README.md)；文件搬遷映射及校驗邊界見 [PROVENANCE.md](PROVENANCE.md)。

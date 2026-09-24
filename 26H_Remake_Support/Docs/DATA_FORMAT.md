@@ -1,15 +1,15 @@
 # 資料與 CSV 格式
 
-## Calibration
+## 標定
 
 - `Data/Calibration/active/dynamic_calibration_12_30deg.json`：正式標定 JSON 的參考副本。
-- `Data/Calibration/angle_12_30deg/source_images`：歷史標定來源圖，共 10 張。
+- `Data/Calibration/angle_12_30deg/source_images`：標定來源圖，共 10 張。
 - `Data/Calibration/angle_12_30deg/rectified_images`：對應展開圖，共 10 張。
-- `Data/Calibration/generated`：在樹莓派重新標定時的新結果暫存位置。
+- `Data/Calibration/generated`：按需部署 Pi 端工具後，重新標定的結果；不自動變成正式配置。
 
-本地正式鏡像與此參考副本的 JSON 實際 `samples` 均為 12、14、16、18、20、22、24、26、28、30°，並非僅在檔名或範圍寫 12–30°。角點和位置映射均在 JSON 中，原始資料沒有獨立點位 TXT。
+正式 JSON 與此參考副本的 `samples` 均為 12、14、16、18、20、22、24、26、28、30°。角點和位置映射在 JSON 中；來源沒有獨立點位 TXT。
 
-## Training
+## 訓練資料
 
 `Data/Training/steel_ball_12_30deg_exp10/by_angle` 按 12、14、16、18、20、22、24、26、28、30°分組：
 
@@ -19,7 +19,7 @@
 
 完整資料為 2405 張圖片和 2405 個配對標籤。
 
-資料集整理腳本先讀會話根目錄的 `session.json`；沒有時才讀封存的 `source_records/capture_session.json`。因此這十個 `by_angle/angle_*` 目錄可直接逐一作為 `--source`，原始記錄和標註均不需搬移或改寫。整理時仍會校驗圖片尺寸、標註、重複圖及 `geometry_id`；此兼容處理**不代表**舊資料與現在生效的十樣本標定 JSON 幾何一致。
+資料集整理腳本先讀會話根目錄的 `session.json`；沒有時讀封存的 `source_records/capture_session.json`。因此十個 `by_angle/angle_*` 目錄可直接作為 `--source`，無需改寫資料。整理時校驗圖片、標註和採集時的 `geometry_id`；這是資料內部一致性檢查，不是 HEF／生效標定的自動匹配檢查。
 
 ## 下位機 CSV 模式
 

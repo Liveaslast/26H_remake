@@ -1,18 +1,16 @@
 # 26H Remake｜鋼球平衡系統
 
-這個倉庫把「樹莓派視覺 → 下位機估計與控制 → 可重做的資料及診斷」分成三個責任明確的工程。第一次閱讀，按下表進入即可；不要把資料製作工具當成正式運行入口。
+相機在樹莓派上產生球坐標，STM32 接收後估計狀態、控制電機，Windows 工具負責資料製作與測試記錄。三部分分開維護，正式運行不依賴訓練圖片或診斷腳本。
 
-| 目錄 | 做甚麼 | 從哪裏開始 |
-|---|---|
-| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 樹莓派正式視覺運行包：相機、動態標定展開、HailoRT、球坐標、串口與調試頁 | `best/run.py` |
-| [26H_Remake_Support](26H_Remake_Support/README.md) | 標定、採圖、標註、訓練、CSV 採集與分析；保留可溯源的資料 | [工具索引](26H_Remake_Support/Docs/TOOL_INDEX.md) |
-| [26H_Remake_DJC](26H_Remake_DJC/) | 下位機固件：接收球狀態、估計、電機控制與 Task1 | 工程內的固件入口與配置 |
+| 工程 | 職責 | 閱讀入口 |
+|---|---|---|
+| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 樹莓派相機、12–30°動態標定、HailoRT 識別、串口發送 | [運行架構](26H_Remake_Raspderry/PROJECT_STRUCTURE.md) |
+| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 狀態估計、電機控制、Task1 | [下位機模組導航](26H_Remake_DJC/README.md)；編譯與燒錄由項目持有人完成 |
+| [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／標定／訓練資料製作，以及 CSV 採集與分析 | [工具索引](26H_Remake_Support/Docs/TOOL_INDEX.md) |
 
-## 一條鏈路
+## 運行
 
-樹莓派實機選 ROI、標定、採圖 → Windows 框選 bbox、整理資料集與訓練 → 本地虛擬機將 PT 轉成 HEF（此步暫未收錄）→ 樹莓派以 HailoRT 運行 → 下位機接收球狀態並控制 → Windows 記錄與分析 CSV。具體平台、輸入輸出與命令見 [完整流程](26H_Remake_Support/Docs/PROJECT_WORKFLOW.md)及[命令手冊](26H_Remake_Support/Docs/COMMANDS.md)。
-
-正式樹莓派命令只從 `~/vision_workspace/workspace` 啟動；把本地鏡像放在旁邊不會自動替換現行工作區：
+樹莓派正式部署目錄是 `/home/ikun/vision_workspace/workspace`，Python 虛擬環境獨立位於 `/home/ikun/vision_workspace/.venv`。`(vision_ws)` 只是終端提示名稱。
 
 ```bash
 cd ~/vision_workspace/workspace
@@ -26,10 +24,13 @@ python3 best/run.py \
   --no-display
 ```
 
-## 復用時的邊界
+這條命令已在樹莓派正式工作區運行。生效標定 JSON 實際包含 12、14、…、30°十個樣本；12–14°視覺已實機觀察正常。Hailo HEF、bbox 球心與正式視覺處理路徑未因補標定而改動。模型缺少可自動核對幾何 ID 的 `deployment.json`；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
 
-- 相機與機構相關的 ROI、標定 JSON、HEF 及訓練資料必須成套核對；不能只憑「12–30°」檔名互換。當前未決的 12°幾何對齊問題見 [Support README](26H_Remake_Support/README.md#待處理12-標定與現行模型對齊)。
-- `Support/Vision/APP` 是資料製作入口，`Support/Diagnostics/APP` 是測試入口，`Support/Data` 是資料；正式運行只依賴 Raspberry 包及樹莓派既有虛擬環境。
-- 實機編譯/燒錄及 PT→HEF 轉換由項目持有人另行完成；本倉庫不把它們偽裝成可直接執行的步驟。
+## 按任務閱讀
 
-保留 2405 組 12–30°已標註樣本以便學習和復現。上傳前請按 [資料說明](26H_Remake_Support/Docs/DATA_FORMAT.md)核對內容、授權與倉庫容量；倉庫根目錄的原始鏡像備份和臨時下載不屬於正式工程。
+- 從 ROI、採圖走到模型與 Task1：[完整流程](26H_Remake_Support/Docs/PROJECT_WORKFLOW.md)。
+- 執行命令、平台和輸出路徑：[命令手冊](26H_Remake_Support/Docs/COMMANDS.md)。
+- CSV 每列的含義：[資料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
+- 想復用架構：先看兩個工程的 README，再按新機構替換 ROI、標定、模型及串口配置；不要把本機構的 JSON／HEF 直接當通用模板。
+
+PT→HEF 在本地虛擬機完成，本倉庫不提供該步命令。固件編譯與燒錄也由項目持有人完成。Windows Support 保存 2405 組 12–30°已標註圖片及可追溯的標定資料；樹莓派正式運行不需要這些原始資料。

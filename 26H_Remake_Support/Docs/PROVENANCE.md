@@ -1,50 +1,25 @@
-# 來源溯源與取捨
+# Support 資料與工具來源
 
-## 資料來源
+## 資料
 
-- 訓練集來自 `D:\26H-remake\_pi_raw\best\algorithm\no_m0\roi_dataset_128x640`：2405 張 640×128 PNG 與 2405 個同名 YOLO TXT。
-- 標定圖片來自 `D:\26H-remake\_pi_raw\best\algorithm\no_m0\calibration_output\roi_128x640`：10 張來源圖與 10 張展開圖。
-- `Data/Calibration/active/dynamic_calibration_12_30deg.json` 與本地 `26H_Remake_Raspderry/assets/calibration/dynamic_calibration_12_30deg.json` 內容相同，只供工具復現與校驗；舊鏡像中的路徑是 `best/algorithm/calibration_data/active/roi_128x640/dynamic_calibration_12_30deg.json`。
-- `Data/TestRecords` 是本次視覺延遲、有效率、座標跳變及 Task1 驗證時實際生成的 8 份 CSV。
-
-## 視覺工具映射
-
-| 現入口 | 原文件 |
+| 現行位置 | 可追溯來源 |
 |---|---|
-| `Vision/APP/select_roi.py` | `no_m0/select_source_roi.py` |
-| `Vision/APP/calibrate_geometry.py` | `no_m0/calibrate.py` |
-| `Vision/APP/capture_training_data.py` | `no_m0/collect_roi.py` |
-| `Vision/APP/annotate_ball.py` | `no_m0/label_pruned_roi_dataset.py` |
-| `Vision/APP/build_yolo_dataset.py` | `train/prepare_dataset.py` |
-| `Vision/APP/train_yolo.py` | `train/train_roi.py` |
-| `Vision/APP/rename_dataset_files.py` | `tools/vision_dataset_pipeline/rename_visual_assets.py` |
+| `Data/Calibration/active/dynamic_calibration_12_30deg.json` | 與 Raspberry `assets/calibration/dynamic_calibration_12_30deg.json` 內容相同，實際含 12、14、…、30°十樣本 |
+| `Data/Calibration/angle_12_30deg/` | 從樹莓派標定輸出保存的十張來源圖及十張展開圖 |
+| `Data/Training/steel_ball_12_30deg_exp10/` | 本地 `_pi_raw/best/algorithm/no_m0/roi_dataset_128x640`；2405 張圖片與 2405 個同名標籤 |
+| `Data/TestRecords/` | 視覺延遲、有效率、座標跳變及 Task1 的實際測試 CSV |
 
-所需的 `calibration`、`geometry`、`dataset`、相機及遙測模組按依賴閉包分入 `Core`、`IO`、`Config`。只調整 Support 內的匯入路徑和輸出路徑，未修改 `26H_Remake_Raspderry` 的視覺算法。
+採集 session、逐幀 metadata 與標註原文均保留，不為對齊現行標定而回寫歷史 geometry ID。資料集腳本可讀 `source_records/capture_session.json`，不要求搬動封存文件。生效標定的幾何差異與實機驗證邊界見 [Raspberry PROVENANCE](../../26H_Remake_Raspderry/PROVENANCE.md)。
 
-相機相關入口由樹莓派執行；標註、資料集整理和訓練由 Windows 執行。PT→HEF 在本地虛擬機完成，暫不納入這組 Support 腳本。
+## 工具映射
 
-## 診斷工具映射
-
-| 現入口 | 原文件 |
+| 現行入口 | 原用途／來源 |
 |---|---|
-| `Diagnostics/APP/capture_mcu_csv.py` | `csv_diagnostics/windows/capture_mcu_vision_csv.py` |
-| `Diagnostics/APP/analyze_vision.py` | `csv_diagnostics/windows/analyze_vision_csv.py` |
-| `Diagnostics/APP/capture_vision_csv.sh` | `csv_diagnostics/raspberry_pi/run_vision_probe.sh` |
-| `Diagnostics/APP/analyze_vision_probe.py` | `csv_diagnostics/raspberry_pi/analyze_vision_probe.py` |
-| `Diagnostics/APP/initialize_zero.py` | `control_testing/01_run/initialize_ballbeam_zero.py` |
-| `Diagnostics/APP/run_task1.py` | `control_testing/01_run/run_task1_sequence.py` |
-| `Diagnostics/APP/analyze_task1.py` | `control_testing/03_analyze/analyze_task1_sequence.py` |
-| `Diagnostics/IO/check_serial_link.py` | `control_testing/04_tools/check_serial_duplex.py` |
+| `Vision/APP/select_roi.py`、`calibrate_geometry.py`、`capture_training_data.py` | 相機 ROI、軌道標定與訓練圖採集 |
+| `Vision/APP/annotate_ball.py`、`build_yolo_dataset.py`、`train_yolo.py` | bbox 標註、資料集整理與 YOLO 訓練 |
+| `Vision/APP/rename_dataset_files.py` | 訓練與標定資料的成對改名預覽 |
+| `Diagnostics/APP/capture_mcu_csv.py`、`capture_vision_csv.sh` | STM32 5 ms CSV 與 Pi 逐幀 probe |
+| `Diagnostics/APP/analyze_vision.py`、`analyze_vision_probe.py` | 視覺鏈路與幀率分析 |
+| `Diagnostics/APP/initialize_zero.py`、`run_task1.py`、`analyze_task1.py` | 零點初始化、Task1 記錄與分析 |
 
-`Diagnostics/Core` 只保留 Task1 入口的直接依賴。
-
-## 明確排除
-
-- BBP/BPUSH 一次性調參腳本。
-- 正負階躍的舊採集與分析腳本。
-- 舊 alpha-beta、插值、候選比較與參數遍歷腳本。
-- VOFA 監視、自由串口監視及 UART 演示。
-- 舊 Task 樣本庫、legacy、重複備份與訓練輸出。
-- `capture_roll_frames.py`、`prune_roi_dataset.py` 及正式運行才需要的 tracker/estimator。
-
-排除的依據是：不屬於當前 ROI/標定/YOLO 資料鏈，也不屬於本次 5 ms 視覺與 Task1 驗證鏈。
+可執行入口只在 `APP/`；`Core/`、`IO/`、`Config/` 是按依賴閉包收納的實現。未納入一次性參數遍歷、舊階躍、VOFA 監視、重複備份和其他與當前資料／5 ms 診斷鏈無關的腳本。正式視覺代碼由 Raspberry 包單獨維護。

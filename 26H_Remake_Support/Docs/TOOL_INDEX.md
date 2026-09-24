@@ -1,6 +1,6 @@
 # 工具索引：先按任務找入口
 
-工具命令在對應平台的 `26H_Remake_Support` 根目錄執行；Windows 保留完整 Support，樹莓派正式視覺不需要 Support 常駐。要在 Pi 選 ROI、標定或採圖，先按 [COMMANDS.md](COMMANDS.md) 部署 `Vision/`。`Vision/APP` 製作視覺資料，`Diagnostics/APP` 採集與分析測試；`Core`、`IO` 是依賴，通常不直接運行。各數據列見 [DATA_FORMAT.md](DATA_FORMAT.md)。
+先按目標找入口，再到 [COMMANDS.md](COMMANDS.md) 複製對應平台的命令。Windows 保留完整 Support；樹莓派正式視覺不需要 Support 常駐，只有製作新視覺資料時才部署 `Vision/`。`Core/`、`IO/` 是入口依賴，不單獨運行。字段見 [DATA_FORMAT.md](DATA_FORMAT.md)。
 
 | 目標 | 平台 | 入口 | 主要輸入 → 輸出 |
 |---|---|---|---|
@@ -19,4 +19,4 @@
 | 啟動並記錄 Task1 | Windows | `Diagnostics/APP/run_task1.py` | COM 口 → `Data/TestRecords/` control CSV |
 | 分析 Task1 | Windows | `Diagnostics/APP/analyze_task1.py` | Task1 CSV → 分析輸出 |
 
-復用新項目時先複製這套目錄職責，再明確替換相機 ROI、標定、資料集、模型與串口配置；不要把舊機構的成品 JSON 或 HEF 當作通用模板。正式進程和測試工具分開部署。來源與文件取捨見 [PROVENANCE.md](PROVENANCE.md)。
+復用新項目時保留「正式運行／資料工具／診斷」的責任劃分，再替換相機 ROI、標定、資料集、模型及串口配置。成品 JSON／HEF 與本機構綁定，不是通用模板。來源見 [PROVENANCE.md](PROVENANCE.md)。

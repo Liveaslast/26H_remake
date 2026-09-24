@@ -1,17 +1,13 @@
-# 12–30°鋼球檢測訓練資料
+# 12–30°鋼球 YOLO 資料
 
-來源：`D:\26H-remake\_pi_raw\best\algorithm\no_m0\roi_dataset_128x640`。
+`by_angle/angle_*` 分成 12、14、…、30°十組，共 2405 張 640×128 PNG 和 2405 個同名標籤；採集曝光值為 10，類別是 `0 steel_ball`。
 
-- 相機曝光值：10
-- 角度組：12、14、16、18、20、22、24、26、28、30°
-- 訓練圖片：2405 張 PNG，尺寸 640×128
-- YOLO 標註：2405 個 TXT，與圖片檔名一一配對
-- 類別：`0 steel_ball`
+| 位置 | 內容 |
+|---|---|
+| `by_angle/<角度>/images/` | 已選用的訓練圖片 |
+| `by_angle/<角度>/labels/` | 同名 YOLO TXT，每行 `class_id center_x center_y width height`，座標歸一化 |
+| `by_angle/<角度>/source_records/` | 原始會話與逐幀 metadata，用於溯源，不回寫 |
 
-每行標註格式為 `class_id center_x center_y width height`，四個浮點數是歸一化的中心座標和框寬高，不是四個頂點座標。
+TXT 保存 bbox 的中心與寬高，並非四個頂點。資料由樹莓派採集、在 Windows 標註；正式 Pi 視覺只載入已編譯的 HEF，不讀這些 PNG／TXT。
 
-`by_angle/<angle>/images` 與 `labels` 是實際訓練對；`source_records` 保留原始采集 session 和逐幀 metadata，用於溯源。metadata 也記錄了原始未標註圖及中間圖路徑，但那些文件未混入本訓練資料集。
-
-`Vision/APP/build_yolo_dataset.py` 可直接讀取這十個 `by_angle/angle_*` 目錄：若根目錄沒有 `session.json`，就從 `source_records/capture_session.json` 取得原有 `geometry_id`，不修改封存資料。已逐一校驗 2405 組圖片/標註和單一幾何 ID；這只證明資料格式一致，**不表示**它與目前生效的十樣本標定或 HEF 自動匹配。完整命令見 `../../../Docs/COMMANDS.md`。
-
-原圖是在連接實際相機與機構的樹莓派上採集；框選、資料集整理和 YOLO 訓練在 Windows 完成。正式樹莓派進程不讀取本目錄，而是載入已編譯的 `best.hef`。
+`Vision/APP/build_yolo_dataset.py` 可直接把各個 `by_angle/angle_*` 目錄作為 `--source`。腳本優先讀會話根目錄的 `session.json`，否則讀封存的 `source_records/capture_session.json`；既有採集記錄的 geometry ID 保持原樣。2405 組配對與內部幾何一致性已核對，但這不等於模型與現行十樣本 JSON 能靠 ID 自動匹配。命令見 [COMMANDS.md](../../../Docs/COMMANDS.md)，來源見 [PROVENANCE.md](../../../Docs/PROVENANCE.md)。

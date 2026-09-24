@@ -1,24 +1,22 @@
-# Raspberry Pi｜鋼球視覺運行包
+# Raspberry Pi｜正式視覺運行包
 
-這是樹莓派正式視覺進程的本地部署鏡像。2026-09-24 已由使用者部署到樹莓派 `/home/ikun/vision_workspace/workspace`，正式視覺實機運行正常。標定拍攝、YOLO 訓練與 CSV 分析工具在 Windows 同級的 `26H_Remake_Support`；下位機控制在 `26H_Remake_DJC`。本目錄不是另一套視覺算法。
+本工程部署到樹莓派 `/home/ikun/vision_workspace/workspace`。`best/run.py` 是唯一正式命令入口，調用 `ballbeam.app.main`；不另開第二套相機或識別流程。
 
 ```text
-ballbeam/
-  app/                 啟動編排、逐幀循環、球狀態發送
-  vision/              標定展開、檢測、追蹤、HailoRT/NCNN 後端
-  hardware/            USB 相機、串口與角度遙測
-  interfaces/          調試頁與 Wi-Fi MJPEG；共用同一相機進程
-  control/             來源代碼中的可選控制輔助，正式控制在 MCU
-config/runtime.toml    正式進程參數
-assets/calibration/    生效標定 JSON
-assets/models/hailo/   HEF 與原始模型 metadata
-tests/                 不需相機的結構與配置測試
-best/run.py            舊命令相容入口，僅轉發到 ballbeam.app.main
+ballbeam/app/          啟動、逐幀處理、BALL_STATE 發送
+ballbeam/vision/       標定、追蹤、檢測與 HailoRT 後端
+ballbeam/hardware/     相機、串口與角度遙測
+ballbeam/interfaces/   DebugPage 與 Wi-Fi MJPEG
+ballbeam/control/      來源代碼中的輔助邏輯；閉環控制在 STM32
+config/runtime.toml    正式配置
+assets/calibration/    生效的 12–30°標定 JSON
+assets/models/hailo/   HEF 和模型 metadata
+tests/                 不接設備的結構測試
 ```
 
-精確模組責任見 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)，來源與改動邊界見 [PROVENANCE.md](PROVENANCE.md)。
+模組與依賴見 [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)；原始文件映射與標定溯源見 [PROVENANCE.md](PROVENANCE.md)。資料製作和 CSV 工具在 Windows 的 [Support 工程](../26H_Remake_Support/README.md)，不是本包的運行依賴。
 
-## 樹莓派正式命令
+## 啟動
 
 ```bash
 cd ~/vision_workspace/workspace
@@ -32,6 +30,8 @@ python3 best/run.py \
   --no-display
 ```
 
-`(vision_ws)` 是提示符名稱；實際虛擬環境位於 `/home/ikun/vision_workspace/.venv`。正式包直接位於 `workspace`；`26H_Remake_Support` 不是運行依賴，不必常駐樹莓派。`python3 -m ballbeam` 也進入同一個 `main()`，但以上命令是實機驗證過的入口。HEF、bbox 球心及 RANSAC 算法未改；標定 JSON 已補入真實 12°樣本。Hailo 模組導入失敗時會明確報錯，不會悄悄改跑 Ultralytics。
+`(vision_ws)` 是提示符名稱，實際虛擬環境是 `~/vision_workspace/.venv`。生效 JSON 有 12、14、…、30°十個標定樣本，來源 ROI 為 `(128,425,1141,121)`。正式位置已實機啟動，12–14°視覺已觀察正常；補入 12°後未重跑 Task1，不把此前 Task1 測試記作這版的新結果。
 
-部署包的 49 項 SHA-256 校驗均在樹莓派通過；`python3 -B -m unittest discover -s tests -v` 的 5 項離線測試也通過。使用者在樹莓派測試目錄實測新版 12–14°視覺正常，並在正式 `workspace` 啟動後確認正式視覺正常。Task1 曾在補入 12°樣本之前通過；本次沒有重跑，不能記作更新後的 Task1 驗收。舊有 14–30°標定樣本逐項未變，且實際 Task1 電機不進入 12°。
+## 部署檢查
+
+在包根目錄執行 `sha256sum -c SHA256SUMS.txt`、`python3 -B -m unittest discover -s tests -v`。前者核對文件，後者檢查資產路徑、ROI 和真實角度樣本；它們不能代替相機、Hailo 與串口實機測試。模型未附 `deployment.json`，因此幾何 ID 不能由程式自動比對。
