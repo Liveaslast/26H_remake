@@ -1,15 +1,15 @@
-# 模型訓練產物
+# 模型训练产物
 
-這裡保存 Windows 訓練所得的 PyTorch 權重，不參與樹莓派正式運行。
+这里保存 Windows 训练所得的 PyTorch 权重，不参与树莓派正式运行。
 
-| 文件或目錄 | 用途 |
+| 文件或目录 | 用途 |
 |---|---|
-| **best.pt** | 最佳訓練權重；交給本地虛擬機轉成 HEF |
-| **best.pt.geometry.json** | 新版訓練腳本生成的幾何旁車文件；現有舊 PT 沒有，勿臆造 |
-| **last.pt** | 下次訓練生成時保存最後一輪權重；目前沒有 |
-| **Runs/** | 下次訓練生成的日誌與結果 |
-| **ncnn_model/** | 僅在實際導出、測試 NCNN 時才建立 |
+| **best.pt** | 最佳训练权重；交给本地虚拟机转成 HEF |
+| **best.pt.geometry.json** | 新版训练脚本生成的几何旁车文件；现有旧 PT 没有，勿臆造 |
+| **last.pt** | 下次训练生成时保存最后一轮权重；目前没有 |
+| **Runs/** | 下次训练生成的日志与结果 |
+| **ncnn_model/** | 仅在实际导出、测试 NCNN 时才建立 |
 
-現有 **best.pt** 複製自 **D:\Linux_system\VM_share\best.pt**，其內部訓練資料路徑指向 **roi_ball_128x640_angle12/roi_ball.yaml**。舊鏡像 NCNN 部署記錄也指向該資料集，其 **geometry_id** 為 **b5db7d68…74de5ad**；這是來源線索，並非從此 PT 直接讀到的 ID。現行樹莓派標定 ID 不同，不要為消除警告而補寫不實的模型幾何 ID。
+现有 **best.pt** 复制自 **D:\Linux_system\VM_share\best.pt**，其内部训练资料路径指向 **roi_ball_128x640_angle12/roi_ball.yaml**。旧镜像 NCNN 部署记录也指向该资料集，其 **geometry_id** 为 **b5db7d68…74de5ad**；这是来源线索，并非从此 PT 直接读到的 ID。现行树莓派标定 ID 不同，不要为消除警告而补写不实的模型几何 ID。
 
-轉換完成的正式模型位於兄弟工程 **26H_Remake_Raspderry/assets/models/hailo/best.hef**。樹莓派正式工作空間只需要 HEF，不需要這裡的 PT、訓練日誌或 NCNN。
+转换完成的正式模型位于兄弟工程 **26H_Remake_Raspderry/assets/models/hailo/best.hef**。树莓派正式工作空间只需要 HEF，不需要这里的 PT、训练日志或 NCNN。

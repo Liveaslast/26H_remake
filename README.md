@@ -1,30 +1,30 @@
-# 26H_Remake｜鋼球平衡系統
+# 26H_Remake｜钢球平衡系统
 
-相機在樹莓派上產生球坐標，STM32 接收後估計狀態、控制電機，Windows 工具負責資料製作與測試記錄。三部分分開維護，正式運行不依賴訓練圖片或診斷腳本。
+相机在树莓派上产生球坐标，STM32 接收后估计状态、控制电机，Windows 工具负责资料制作与测试记录。三部分分开维护，正式运行不依赖训练图片或诊断脚本。
 
-| 工程 | 職責 | 閱讀入口 |
+| 工程 | 职责 | 阅读入口 |
 |---|---|---|
-| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 樹莓派相機、12–30°動態標定、HailoRT 識別、串口發送小球坐標與速度 | [運行架構](26H_Remake_Raspderry/PROJECT_STRUCTURE.md) |
-| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 α-β濾波、電機控制、回傳電機角度 | [下位機模組導航](26H_Remake_DJC/README.md)；編譯與燒錄由項目持有人完成 |
-| [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／標定／訓練資料製作，以及 CSV 採集與分析 | [工具索引](26H_Remake_Support/Docs/TOOL_INDEX.md) |
+| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 树莓派相机、12–30°动态标定、HailoRT 识别、串口发送小球坐标与速度 | [运行说明](26H_Remake_Raspderry/README.md) |
+| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 α-β滤波、电机控制、回传电机角度 | [下位机模组导航](26H_Remake_DJC/README.md)；编译与烧录由项目持有人完成 |
+| [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／标定／训练资料制作，以及 CSV 采集与分析 | [工具与资料入口](26H_Remake_Support/README.md) |
 
-## 運行
+## 运行
 
-樹莓派正式部署目錄是 **/home/ikun/vision_workspace/workspace**，Python 虛擬環境獨立位於 **/home/ikun/vision_workspace/.venv**。**(vision_ws)** 只是終端提示名稱。
+树莓派正式部署目录是 **/home/ikun/vision_workspace/workspace**，Python 虚拟环境独立位于 **/home/ikun/vision_workspace/.venv**。**(vision_ws)** 只是终端提示名称。
 
-在樹莓派終端依序執行以下三行：
+在树莓派终端依序执行以下三行：
 
 1. cd ~/vision_workspace/workspace
 2. source ~/vision_workspace/.venv/bin/activate
 3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
-模型缺少可自動核對幾何 ID 的 **deployment.json**；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
+模型缺少可自动核对几何 ID 的 **deployment.json**；详见 [来源与验证边界](26H_Remake_Raspderry/PROVENANCE.md)。
 
-## 按任務閱讀
+## 按任务阅读
 
-- 從 ROI、採圖走到模型與 Task1：[完整流程](26H_Remake_Support/Docs/PROJECT_WORKFLOW.md)。
-- 執行命令、平台和輸出路徑：[命令手冊](26H_Remake_Support/Docs/COMMANDS.md)。
-- CSV 每列的含義：[資料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
-- 想復用架構：先看兩個工程 [26H_Remake_Raspderry] 、 [26H_Remake_DJC]的 README，再按新機構替換 ROI、標定、模型及串口配置；不要把本機構的 JSON／HEF 直接當通用模板。
+- 从 ROI、采图走到模型与 Task1：[Support 总览](26H_Remake_Support/README.md)与[操作命令](26H_Remake_Support/Docs/COMMANDS.md)。
+- 执行命令、平台和输出路径：[命令手册](26H_Remake_Support/Docs/COMMANDS.md)。
+- CSV 每列的含义：[资料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
+- 想复用架构：先看 [树莓派工程](26H_Remake_Raspderry/README.md) 与 [下位机工程](26H_Remake_DJC/README.md)，再按新机构替换 ROI、标定、模型及串口配置；不要把本机构的 JSON／HEF 直接当通用模板。
 
-PT→HEF 在本地虛擬機完成，本倉庫不提供該步命令。固件編譯與燒錄也由項目持有人完成。Windows Support 保存 2405 組 12–30°已標註圖片及可追溯的標定資料；樹莓派正式運行不需要這些原始資料。
+PT→HEF 在本地虚拟机完成，本仓库不提供该步命令。固件编译与烧录也由项目持有人完成。Windows Support 保存 2405 组 12–30°已标注图片及可追溯的标定资料；树莓派正式运行不需要这些原始资料。

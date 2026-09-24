@@ -1,16 +1,16 @@
-# STM32｜狀態估計與控制
+# STM32｜状态估计与控制
 
-下位機接收樹莓派發送的球位置與有效標誌，結合電機／桿角度進行狀態估計和控制；Task1 的目標序列也在此工程中。樹莓派負責提供視覺坐標，不在上位機重複閉環控制。
+下位机接收树莓派发送的球位置与有效标志，结合电机／杆角度进行状态估计和控制；Task1 的目标序列也在此工程中。树莓派负责提供视觉坐标，不在上位机重复闭环控制。
 
-| 目錄 | 職責 |
+| 目录 | 职责 |
 |---|---|
-| **APP/inc**、**APP/src** | 通信、球狀態估計、電機任務與調試任務入口 |
-| **UserLib/** | 鋼球控制器、電機控制器與任務參數 |
-| **Devices/** | QD4310 電機設備封裝 |
-| **Hardware/** | LED、串口等板級封裝 |
-| **Core/**、**Drivers/**、**Middlewares/** | STM32 平台初始化、HAL 與中間件 |
-| **CMakeLists.txt**、**CMakePresets.json**、**cmake/** | 工程構建配置 |
+| **APP/inc**、**APP/src** | 通信、球状态估计、电机任务与调试任务入口 |
+| **UserLib/** | 钢球控制器、电机控制器与任务参数 |
+| **Devices/** | QD4310 电机设备封装 |
+| **Hardware/** | LED、串口等板级封装 |
+| **Core/**、**Drivers/**、**Middlewares/** | STM32 平台初始化、HAL 与中间件 |
+| **CMakeLists.txt**、**CMakePresets.json**、**cmake/** | 工程构建配置 |
 
-運行鏈路是 **CommunicationTask** 接收視覺包 → **BallStateTask** 估計球狀態 → **GimbalTask** 執行電機控制；**DebugTask** 從 USART6 提供命令與 5 ms CSV 診斷。**DebugCommand.h**、**VisionFrame.h** 定義對應的命令與視覺資料格式。Task1 和機械零點的操控由 Windows [Support 命令手冊](../26H_Remake_Support/Docs/COMMANDS.md)提供；CSV 各列見 [資料格式](../26H_Remake_Support/Docs/DATA_FORMAT.md)。
+运行链路是 **CommunicationTask** 接收视觉包 → **BallStateTask** 估计球状态 → **GimbalTask** 执行电机控制；**DebugTask** 从 USART6 提供命令与 5 ms CSV 诊断。**DebugCommand.h**、**VisionFrame.h** 定义对应的命令与视觉资料格式。Task1 和机械零点的操控由 Windows [Support 命令手册](../26H_Remake_Support/Docs/COMMANDS.md)提供；CSV 各列见 [资料格式](../26H_Remake_Support/Docs/DATA_FORMAT.md)。
 
-本 README 只導航代碼責任。固件編譯與燒錄由項目持有人完成，不在這裏提供可能與實際硬件環境不符的通用指令。
+本 README 只导航代码责任。固件编译与烧录由项目持有人完成，不在这里提供可能与实际硬件环境不符的通用指令。
