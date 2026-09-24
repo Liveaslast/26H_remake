@@ -18,20 +18,14 @@ tests/                 不接設備的結構測試
 
 ## 啟動
 
-```bash
-cd ~/vision_workspace/workspace
-source ~/vision_workspace/.venv/bin/activate
-python3 best/run.py \
-  --port /dev/ttyUSB0 \
-  --inference-backend hailort \
-  --debug-page \
-  --serial-read-timeout-ms 1 \
-  --wifi-stream \
-  --no-display
-```
+在樹莓派終端依序執行：
+
+1. cd ~/vision_workspace/workspace
+2. source ~/vision_workspace/.venv/bin/activate
+3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
 `(vision_ws)` 是提示符名稱，實際虛擬環境是 `~/vision_workspace/.venv`。生效 JSON 有 12、14、…、30°十個標定樣本，來源 ROI 為 `(128,425,1141,121)`。正式位置已實機啟動，12–14°視覺已觀察正常；補入 12°後未重跑 Task1，不把此前 Task1 測試記作這版的新結果。
 
 ## 部署檢查
 
-在包根目錄執行 `sha256sum -c SHA256SUMS.txt`、`python3 -B -m unittest discover -s tests -v`。前者核對文件，後者檢查資產路徑、ROI 和真實角度樣本；它們不能代替相機、Hailo 與串口實機測試。模型未附 `deployment.json`，因此幾何 ID 不能由程式自動比對。
+在包根目錄執行 sha256sum -c SHA256SUMS.txt 和 python3 -B -m unittest discover -s tests -v。前者核對文件，後者檢查資產路徑、ROI 和真實角度樣本；它們不能代替相機、Hailo 與串口實機測試。模型未附 `deployment.json`，因此幾何 ID 不能由程式自動比對。

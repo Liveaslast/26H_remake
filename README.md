@@ -12,17 +12,11 @@
 
 樹莓派正式部署目錄是 `/home/ikun/vision_workspace/workspace`，Python 虛擬環境獨立位於 `/home/ikun/vision_workspace/.venv`。`(vision_ws)` 只是終端提示名稱。
 
-```bash
-cd ~/vision_workspace/workspace
-source ~/vision_workspace/.venv/bin/activate
-python3 best/run.py \
-  --port /dev/ttyUSB0 \
-  --inference-backend hailort \
-  --debug-page \
-  --serial-read-timeout-ms 1 \
-  --wifi-stream \
-  --no-display
-```
+在樹莓派終端依序執行以下三行：
+
+1. cd ~/vision_workspace/workspace
+2. source ~/vision_workspace/.venv/bin/activate
+3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
 這條命令已在樹莓派正式工作區運行。生效標定 JSON 實際包含 12、14、…、30°十個樣本；12–14°視覺已實機觀察正常。Hailo HEF、bbox 球心與正式視覺處理路徑未因補標定而改動。模型缺少可自動核對幾何 ID 的 `deployment.json`；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
 
