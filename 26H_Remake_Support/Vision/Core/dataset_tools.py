@@ -148,7 +148,12 @@ def collect_session_items(
     """Load all image-label pairs from one capture session."""
 
     images_dir, labels_dir, session_name = resolve_session_directories(source)
-    session_path = images_dir.parent / "session.json"
+    session_root = images_dir.parent
+    session_path = session_root / "session.json"
+    if not session_path.is_file():
+        # Curated, read-only archives keep the original session record here.
+        # A live capture's root session.json always takes precedence.
+        session_path = session_root / "source_records" / "capture_session.json"
     geometry_id: str | None = None
     if session_path.is_file():
         try:

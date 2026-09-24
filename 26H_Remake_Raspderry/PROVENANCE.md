@@ -91,6 +91,12 @@ Support 的 `Data/Training/steel_ball_12_30deg_exp10` 保存從原鏡像 `no_m0/
 - TFT、serial_moni、舊標定、標定圖片、Hailo 日誌
 - `hailo`（Ultralytics）後端；只保留命令使用的 `hailort` 原生後端
 
+## 2026-09-24 配置及目錄脈絡整理
+
+本地 `best/algorithm/config.toml` 刪除九個不被正式 `track_ball.py` 讀取的離線／舊入口分組：`control`、`manual_angle_tracking`、`calibration`、`formal_calibration`、`manual_angle_calibration`、`roi_capture`、`training`、`dataset_prepare`、`ncnn_export`。正式命令實際讀取的 `vision_geometry`、`tracking`、`detector`、`tracker`、`debug`、`formal_tracking` 六組鍵值逐項比對相同。未修改 Python、HEF、active JSON 或實機工作區。
+
+`PROJECT_STRUCTURE.md` 及各級 README 標明現存模組的責任與保留理由；對被現有導入鏈引用的 `ncnn_backend.py`、`control/balance.py` 等不做推測性刪除或改名。
+
 ## 部署位置
 
 把本目錄內容放到樹莓派的 `~/vision_workspace/workspace`。虛擬環境仍位於 `~/vision_workspace/.venv`，不包含在此原始碼/模型運行包中。

@@ -19,7 +19,7 @@
 
 完整資料為 2405 張圖片和 2405 個配對標籤。
 
-封存目錄的會話資料位於 `source_records/capture_session.json`；現行資料集整理腳本只從 `images/`、`labels/` 同級的 `session.json` 讀取 `geometry_id`。所以封存資料不能直接作為該腳本的 `--source`。這是格式兼容性缺口，不代表封存圖片或標註失效。
+資料集整理腳本先讀會話根目錄的 `session.json`；沒有時才讀封存的 `source_records/capture_session.json`。因此這十個 `by_angle/angle_*` 目錄可直接逐一作為 `--source`，原始記錄和標註均不需搬移或改寫。整理時仍會校驗圖片尺寸、標註、重複圖及 `geometry_id`；此兼容處理**不代表**舊資料與候選的十樣本標定 JSON 幾何一致。
 
 ## 下位機 CSV 模式
 

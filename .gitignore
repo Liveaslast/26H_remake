@@ -1,0 +1,22 @@
+# ==============================
+# Local files - do not upload
+# ==============================
+
+/99_docs/
+/Tools/
+/_pi_raw/
+/_pi_raw_new/
+
+# Personal notes
+/9月复刻.md
+
+# Root PDFs
+/*.pdf
+
+# Local calibration/runtime configs
+/calibration_complete_12_30.json
+/calibration_pi_active.json
+/config_pi_active.toml
+
+# Runtime archive
+/vision_runtime_trace.tar.gz

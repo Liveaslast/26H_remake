@@ -91,6 +91,16 @@ python Vision\APP\build_yolo_dataset.py `
 
 結果：Windows 的 `Data\Training\Prepared\images\train|val`、`labels\train|val`、`roi_ball.yaml` 和 `manifest.json`。輸出目錄若已有內容，腳本會拒絕覆蓋，請為新一次整理使用新目錄。
 
+若要使用本倉庫已封存的 2405 組、十個角度，無需搬動原始文件；在 Windows PowerShell 用各角度資料夾逐一傳入：
+
+```powershell
+$angleDirs = Get-ChildItem Data\Training\steel_ball_12_30deg_exp10\by_angle -Directory -Filter 'angle_*' | Sort-Object Name
+$sourceArgs = foreach ($dir in $angleDirs) { '--source'; $dir.FullName }
+python Vision\APP\build_yolo_dataset.py @sourceArgs --output-dir Data\Training\Prepared
+```
+
+此命令只會在空的 `Prepared` 生成副本；封存資料仍留在 `by_angle`。讀取 `geometry_id` 時，先看會話根目錄 `session.json`，否則讀 `source_records/capture_session.json`。它校驗的是資料內部一致性，**不會**解決 Support README 記錄的十樣本候選標定與現行模型幾何對齊問題。
+
 將基礎模型放到 Windows 的 `Data\Training\Models\yolo26n.pt`，再訓練：
 
 ```powershell
