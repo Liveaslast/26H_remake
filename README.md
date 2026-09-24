@@ -4,8 +4,8 @@
 
 | 工程 | 職責 | 閱讀入口 |
 |---|---|---|
-| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 樹莓派相機、12–30°動態標定、HailoRT 識別、串口發送 | [運行架構](26H_Remake_Raspderry/PROJECT_STRUCTURE.md) |
-| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 狀態估計、電機控制、Task1 | [下位機模組導航](26H_Remake_DJC/README.md)；編譯與燒錄由項目持有人完成 |
+| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 樹莓派相機、12–30°動態標定、HailoRT 識別、串口發送小球坐標與速度 | [運行架構](26H_Remake_Raspderry/PROJECT_STRUCTURE.md) |
+| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 α-β濾波、電機控制、回傳電機角度 | [下位機模組導航](26H_Remake_DJC/README.md)；編譯與燒錄由項目持有人完成 |
 | [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／標定／訓練資料製作，以及 CSV 採集與分析 | [工具索引](26H_Remake_Support/Docs/TOOL_INDEX.md) |
 
 ## 運行
@@ -18,13 +18,13 @@
 2. source ~/vision_workspace/.venv/bin/activate
 3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
 
-這條命令已在樹莓派正式工作區運行。生效標定 JSON 實際包含 12、14、…、30°十個樣本；12–14°視覺已實機觀察正常。Hailo HEF、bbox 球心與正式視覺處理路徑未因補標定而改動。模型缺少可自動核對幾何 ID 的 `deployment.json`；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
+模型缺少可自動核對幾何 ID 的 `deployment.json`；詳見 [來源與驗證邊界](26H_Remake_Raspderry/PROVENANCE.md)。
 
 ## 按任務閱讀
 
 - 從 ROI、採圖走到模型與 Task1：[完整流程](26H_Remake_Support/Docs/PROJECT_WORKFLOW.md)。
 - 執行命令、平台和輸出路徑：[命令手冊](26H_Remake_Support/Docs/COMMANDS.md)。
 - CSV 每列的含義：[資料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
-- 想復用架構：先看兩個工程的 README，再按新機構替換 ROI、標定、模型及串口配置；不要把本機構的 JSON／HEF 直接當通用模板。
+- 想復用架構：先看兩個工程 [26H_Remake_Raspderry] 、 [26H_Remake_DJC]的 README，再按新機構替換 ROI、標定、模型及串口配置；不要把本機構的 JSON／HEF 直接當通用模板。
 
 PT→HEF 在本地虛擬機完成，本倉庫不提供該步命令。固件編譯與燒錄也由項目持有人完成。Windows Support 保存 2405 組 12–30°已標註圖片及可追溯的標定資料；樹莓派正式運行不需要這些原始資料。
