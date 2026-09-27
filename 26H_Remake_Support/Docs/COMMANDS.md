@@ -105,6 +105,14 @@ Task1 前把固件 CSV 切回 **control**（13 列，每 5 ms）：
 
 **initialize_zero.py** 用于 MCU 复位或机械零点改变后；**run_task1.py** 发 **task 1**，退出时尝试发 **task stop**。Task1 CSV 写入 **$task1Csv**；控制字段见 [DATA_FORMAT.md](DATA_FORMAT.md#control-通道的-13-列)。
 
+需要复现实机调参最终试验时，可在`task 1`之后通过已有串口接口临时覆盖；这不会写回固件：
+
+1. $task1Csv = "Data\TestRecords\task1_tuned_$(Get-Date -Format yyyyMMdd_HHmmss).csv"
+2. python Diagnostics\APP\run_task1.py --port COM26 --bbp-short 0.35 3.0 4.0 5.0 --bbp-long 0.45 4.5 4.0 10.0 --bbp-negative-max 4.0 --bpush-positive 0 0 0 0 --bpush-negative 1.0 2.0 2.0 2.0 --output $task1Csv
+3. python Diagnostics\APP\analyze_task1.py $task1Csv
+
+参数依据、逐5 ms分析方法和已知锁存边界见 [TASK1_TUNING_EXPERIENCE.md](../Diagnostics/TASK1_TUNING_EXPERIENCE.md)。
+
 ## 5. 树莓派逐帧 probe 与联合分析
 
 probe 是同一正式进程的逐帧内部 CSV，不是另一套识别，也不等于每帧都向 STM32 发包。先停止一般视觉进程，再在 Pi 执行：
@@ -122,3 +130,38 @@ Pi 输出 **~/vision_workspace/diagnostics/vision_probe_&lt;时间戳&gt;.csv**�
 4. python Diagnostics\APP\analyze_vision.py --mcu Data\TestRecords\mcu_vision_listen_實際時間戳.csv --probe Data\TestRecords\vision_probe_實際時間戳.csv
 
 把示例时间戳换成实际输出文件名；Pi probe 与 MCU **vision** CSV 应采自同一时段。probe、vision 和 control 各回答不同问题，字段见 [DATA_FORMAT.md](DATA_FORMAT.md)。
+
+## 6. 2 ms曝光：静态与动态视觉质量
+
+相机已通过V4L2控件核实`exposure_time_absolute`单位为100 us，因此2 ms对应数值20。脚本用正式`best/run.py`采集10 s静态和20 s自然运动，不修改`runtime.toml`。
+
+先在Windows PowerShell部署仓库脚本：
+
+1. cd D:\26H-remake\26H_Remake_Support
+2. scp .\Diagnostics\APP\capture_vision_quality.sh ikun@192.168.137.2:/home/ikun/vision_workspace/capture_vision_quality.sh
+
+然后在树莓派终端执行：
+
+```bash
+EXPOSURE_TIME_ABSOLUTE=20 STATIC_DURATION=10 MOTION_DURATION=20 bash /home/ikun/vision_workspace/capture_vision_quality.sh
+```
+
+按提示先保持钢球静止，再自然来回推动。结果保存到树莓派：
+
+```text
+/home/ikun/vision_workspace/diagnostics/vision_quality_exp20_<时间戳>/
+```
+
+完成后在Windows PowerShell自动查找树莓派最新结果、取回并分析：
+
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+$remoteDir = (ssh ikun@192.168.137.2 "ls -dt /home/ikun/vision_workspace/diagnostics/vision_quality_exp20_* 2>/dev/null | head -n 1").Trim()
+if (-not $remoteDir) { throw "树莓派上没有找到 vision_quality_exp20_* 结果目录" }
+scp -r "ikun@192.168.137.2:${remoteDir}" Data\TestRecords\
+$localDir = Get-ChildItem Data\TestRecords -Directory -Filter 'vision_quality_exp20_*' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+python Diagnostics\APP\analyze_vision_probe.py (Join-Path $localDir.FullName 'static_probe.csv')
+python Diagnostics\APP\analyze_vision_probe.py (Join-Path $localDir.FullName 'motion_probe.csv')
+```
+
+`camera_controls_before.txt`和`camera_controls_after.txt`用于确认实机实际接受了数值20；`session.txt`记录曝光与时长；两份probe分别用于静态抖动和动态连续性分析。运行日志仅用于追查启动或相机错误。

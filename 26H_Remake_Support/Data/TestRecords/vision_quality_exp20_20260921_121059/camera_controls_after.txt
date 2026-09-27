@@ -1,0 +1,3 @@
+auto_exposure: 1 (Manual Mode)
+exposure_time_absolute: 20
+exposure_dynamic_framerate: 0

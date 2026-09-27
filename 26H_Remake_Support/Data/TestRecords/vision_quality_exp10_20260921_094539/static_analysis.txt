@@ -1,0 +1,37 @@
+file: static_probe.csv
+duration_s: 18.886
+sample_count: 1107
+loop_hz_from_csv: 58.62
+measurement_valid_rate: 96.21%
+tracking_valid_rate: 99.91%
+valid_measurement_hz: 56.39
+dt_ms mean/p95/max: 17.37 / 21.40 / 79.39
+measurement_x_cm std/peak_to_peak: 0.0111 / 0.0739
+kalman_x_cm std/peak_to_peak: 0.0111 / 0.0739
+sent_x_cm std/peak_to_peak: 0.0111 / 0.0739
+sent_minus_measurement_cm mean/p95abs/maxabs: 0.0000 / 0.0000 / 0.0000
+kalman_minus_measurement_cm mean/p95abs/maxabs: 0.0000 / 0.0000 / 0.0000
+finite_diff_v_cm_s rms/std/p95abs: 0.70 / 0.70 / 1.43
+kalman_dx_v_cm_s rms/std/p95abs: 0.70 / 0.70 / 1.43
+sent_dx_v_cm_s rms/std/p95abs: 0.70 / 0.70 / 1.43
+kalman_v_cm_s rms/std/p95abs: 0.00 / 0.00 / 0.00
+finite_diff_a_cm_s2 rms/std/p95abs/maxabs: 70.43 / 70.43 / 140.64 / 290.91
+kalman_dx_a_cm_s2 rms/std/p95abs/maxabs: 70.43 / 70.43 / 140.64 / 290.91
+finite_diff_speed_abs_cm_s p50/p95/max: 0.43 / 1.43 / 2.58
+control_period_gaps>25.0ms count/max_ms: 37 / 79.4
+measurement_reversals count: 4
+sent_reversals count: 4
+moving_fd_samples: 146
+moving_kalman_samples: 0
+invalid_runs count/max_ms: 34 / 63.4
+top_finite_diff_accel_events_cm_s2:
+  t=1632.954s value=290.91 v=-2.02->2.58 dt=15.8ms
+  t=1634.754s value=-245.31 v=1.87->-1.98 dt=15.7ms
+  t=1631.154s value=-232.30 v=1.72->-2.05 dt=16.2ms
+  t=1631.170s value=228.54 v=-2.05->1.65 dt=16.2ms
+  t=1630.969s value=227.36 v=-1.85->1.43 dt=14.4ms
+measurement_reversal_events:
+  t=1632.954s v=-2.02->2.58 dt=15.8ms
+  t=1636.122s v=2.58->-2.32 dt=3167.8ms
+  t=1637.570s v=-2.32->2.23 dt=1448.4ms
+  t=1638.322s v=2.23->-2.37 dt=751.6ms

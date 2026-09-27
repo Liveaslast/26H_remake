@@ -18,7 +18,7 @@
 | **Vision/APP/select_roi.py**、**calibrate_geometry.py**、**capture_training_data.py** | 相机 ROI、轨道标定与训练图采集 |
 | **Vision/APP/annotate_ball.py**、**build_yolo_dataset.py**、**train_yolo.py** | bbox 标注、资料集整理与 YOLO 训练 |
 | **Vision/APP/rename_dataset_files.py** | 训练与标定资料的成对改名预览 |
-| **Diagnostics/APP/capture_mcu_csv.py**、**capture_vision_csv.sh** | STM32 5 ms CSV 与 Pi 逐帧 probe |
+| **Diagnostics/APP/capture_mcu_csv.py**、**capture_vision_csv.sh**、**capture_vision_quality.sh**、**capture_motion_quality.sh** | STM32 5 ms CSV、Pi逐帧probe及静态/动态质量复测 |
 | **Diagnostics/APP/analyze_vision.py**、**analyze_vision_probe.py** | 视觉链路与帧率分析 |
 | **Diagnostics/APP/initialize_zero.py**、**run_task1.py**、**analyze_task1.py** | 零点初始化、Task1 记录与分析 |
 
