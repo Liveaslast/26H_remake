@@ -8,6 +8,10 @@
 | [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 α-β滤波、电机控制、回传电机角度 | [下位机模组导航](26H_Remake_DJC/README.md)；编译与烧录由项目持有人完成 |
 | [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／标定／训练资料制作，以及 CSV 采集与分析 | [工具与资料入口](26H_Remake_Support/README.md) |
 
+## 问题
+目前对于控制方案的选取还未做数据整理，同时视觉方案仍然可以进行优化（毕竟Hailo的成本摆在这）
+同时视觉数据质量的分析也缺乏。
+
 ## 运行
 
 树莓派正式部署目录是 **/home/ikun/vision_workspace/workspace**，Python 虚拟环境独立位于 **/home/ikun/vision_workspace/.venv**。**(vision_ws)** 只是终端提示名称。
