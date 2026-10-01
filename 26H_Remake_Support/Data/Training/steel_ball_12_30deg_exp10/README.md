@@ -10,4 +10,4 @@
 
 TXT 保存 bbox 的中心与宽高，并非四个顶点。资料由树莓派采集、在 Windows 标注；正式 Pi 视觉只载入已编译的 HEF，不读这些 PNG／TXT。
 
-**Vision/APP/build_yolo_dataset.py** 可直接把各个 **by_angle/angle_\*** 目录作为 **--source**。脚本优先读会话根目录的 **session.json**，否则读封存的 **source_records/capture_session.json**；既有采集记录的 geometry ID 保持原样。2405 组配对与内部几何一致性已核对，但这不等于模型与现行十样本 JSON 能靠 ID 自动匹配。命令见 [COMMANDS.md](../../../Docs/COMMANDS.md)，来源见 [PROVENANCE.md](../../../Docs/PROVENANCE.md)。
+**Vision/APP/build_yolo_dataset.py** 可直接把各个 **by_angle/angle_\*** 目录作为 **--source**。脚本优先读会话根目录的 **session.json**，否则读封存的 **source_records/capture_session.json**；既有采集记录的 geometry ID 保持原样。2405 组配对与内部几何一致性已核对，但这不等于模型与现行十样本 JSON 能靠 ID 自动匹配。操作见 [Support README](../../../README.md#2-标注整理与训练)，来源见 [PROVENANCE.md](../../../Docs/PROVENANCE.md)。

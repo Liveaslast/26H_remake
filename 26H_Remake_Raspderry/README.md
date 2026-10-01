@@ -1,42 +1,47 @@
 # Raspberry Pi｜正式视觉运行包
 
-本工程部署到树莓派 **/home/ikun/vision_workspace/workspace**。**best/run.py** 是唯一正式命令入口，调用 **ballbeam.app.main**；不另开第二套相机或识别流程。
-
-| 位置 | 用途 |
-|---|---|
-| **ballbeam/app/** | 启动、逐帧处理、BALL_STATE 发送 |
-| **ballbeam/vision/** | 标定、追踪、检测与 HailoRT 后端 |
-| **ballbeam/hardware/** | 相机、串口与角度遥测 |
-| **ballbeam/interfaces/** | DebugPage 与 Wi-Fi MJPEG |
-| **ballbeam/control/** | 来源代码中的辅助逻辑；闭环控制在 STM32 |
-| **config/runtime.toml** | 正式配置 |
-| **assets/calibration/** | 生效的 12–30°标定 JSON |
-| **assets/models/hailo/** | HEF 和模型 metadata |
-| **tests/** | 不接设备的结构测试 |
-
-**best/run.py** 经 **ballbeam/app/main.py** 启动；逐帧处理在 **ballbeam/app/tracking_setup.py** 与 **ballbeam/app/tracking_loop.py**。**ballbeam/vision/detection_runtime/ncnn_backend.py** 含 Hailo 后端共用的图像尺寸与 letterbox 辅助，不能只因正式命令选 Hailo 就删除。
-
-正式配置采用 HailoRT 每帧推理，球坐标取 YOLO bbox 中心；不启用霍夫圆或树莓派 Kalman。代码中的 RANSAC refinement 路径可能执行，但正式球位置仍取 bbox。球状态估计、闭环控制和 Task1 在 STM32 完成。
-
-原始文件映射与标定溯源见 [PROVENANCE.md](PROVENANCE.md)。资料制作和 CSV 工具在 Windows 的 [Support 工程](../26H_Remake_Support/README.md)，不是本包的运行依赖。
+本工程部署到 `/home/ikun/vision_workspace/workspace`。`best/run.py` 是唯一启动入口；资料制作和 CSV 分析在 [Support 工程](../26H_Remake_Support/README.md)。
 
 ## 启动
 
-在树莓派终端依序执行：
+```bash
+cd ~/vision_workspace/workspace
+source ~/vision_workspace/.venv/bin/activate
+python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
+```
 
-1. cd ~/vision_workspace/workspace
-2. source ~/vision_workspace/.venv/bin/activate
-3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
+`(vision_ws)` 只是终端提示名称，实际虚拟环境是 `~/vision_workspace/.venv`。
 
-**(vision_ws)** 是提示符名称，实际虚拟环境是 **~/vision_workspace/.venv**。生效 JSON 有 12、14、…、30°十个标定样本，来源 ROI 为 **(128,425,1141,121)**。正式位置已实机启动，12–14°视觉已观察正常；补入 12°后尚未重新记录 Task1 验证。
+## 目录
+
+| 位置 | 内容 |
+|---|---|
+| `ballbeam/app/` | 启动、逐帧处理和 BALL_STATE 发送 |
+| `ballbeam/vision/` | 标定、追踪、检测与 HailoRT 后端 |
+| `ballbeam/hardware/` | 相机、串口与角度遥测 |
+| `ballbeam/interfaces/` | DebugPage 与 Wi-Fi MJPEG |
+| `config/runtime.toml` | 正式配置 |
+| `assets/calibration/` | 生效的 12–30°标定 JSON |
+| `assets/models/hailo/` | 正式 HEF 与模型 metadata |
+
+正式配置使用 HailoRT，球位置取 YOLO bbox 中心；不启用霍夫圆或 Pi Kalman。状态估计、闭环控制和 Task1 均在 STM32 完成。`ncnn_backend.py` 仍包含 Hailo 共用的图像尺寸与 letterbox 代码，不能因正式后端是 Hailo 就删除。
 
 ## 部署检查
 
-下面四行都在**树莓派终端**执行，不是在 Windows 或虚拟机。「包根目录」就是 **/home/ikun/vision_workspace/workspace**；检查所用的 **SHA256SUMS.txt** 和 **tests/** 都在这个目录内。
+```bash
+cd /home/ikun/vision_workspace/workspace
+source /home/ikun/vision_workspace/.venv/bin/activate
+sha256sum -c SHA256SUMS.txt
+python3 -B -m unittest discover -s tests -v
+```
 
-1. cd /home/ikun/vision_workspace/workspace
-2. source /home/ikun/vision_workspace/.venv/bin/activate
-3. sha256sum -c SHA256SUMS.txt
-4. python3 -B -m unittest discover -s tests -v
+这两项只检查文件和结构，不能代替相机、Hailo 与串口实机测试。
 
-第 3 行核对这份部署包的文件是否与清单一致；第 4 行运行不接设备的测试，检查模型、标定文件路径、ROI 和十个角度样本。两者都不能代替相机、Hailo 与串口的实机测试。模型几何 ID 的核对边界见 [PROVENANCE.md](PROVENANCE.md)。
+## 标定与验证边界
+
+- 生效 JSON 的 ROI 为 `(128,425,1141,121)`，包含 12、14、…、30°十个样本，`geometry_id=8a5cd731dad6021704fb36f25fd423fa7ecd1634c998e23d7eaf9b13ff81126f`。
+- 2405 组封存训练资料记录的是旧 `geometry_id=b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad`；历史记录没有被回写。
+- HEF 缺少 `deployment.json`，不能自动证明模型与现行标定匹配，只能靠实机图像、坐标和 valid 验证。
+- 12–14°视觉已观察正常；补入 12°后尚未重新记录 Task1，不能把修改前结果当作修改后验证。
+
+当前目录由旧 `best/algorithm/`、`ball_detection_*`、DebugPage 和 Wi-Fi 模块按职责整理而来；正式处理流程、HEF 和原始模型 metadata 未因目录整理而更换。原机环境记录在 `RUNTIME_ENVIRONMENT_RASPBERRY_PI.txt`。

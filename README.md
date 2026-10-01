@@ -1,43 +1,34 @@
 # 26H_Remake｜钢球平衡系统
 
-相机在树莓派上产生球坐标，STM32 接收后估计状态、控制电机，Windows 工具负责资料制作与测试记录。三部分分开维护，正式运行不依赖训练图片或诊断脚本。
+相机在树莓派上测量球位置，STM32 估计状态并控制电机，Windows Support 负责标定、训练和测试。
 
-| 工程 | 职责 | 阅读入口 |
-|---|---|---|
-| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 树莓派相机、12–30°动态标定、HailoRT 识别、串口发送小球坐标与速度 | [运行说明](26H_Remake_Raspderry/README.md) |
-| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 α-β滤波、电机控制、回传电机角度 | [下位机模组导航](26H_Remake_DJC/README.md)；编译与烧录由项目持有人完成 |
-| [26H_Remake_Support](26H_Remake_Support/README.md) | ROI／标定／训练资料制作，以及 CSV 采集与分析 | [工具与资料入口](26H_Remake_Support/README.md) |
+| 工程 | 内容 |
+|---|---|
+| [26H_Remake_Raspderry](26H_Remake_Raspderry/README.md) | 树莓派正式视觉运行包 |
+| [26H_Remake_DJC](26H_Remake_DJC/README.md) | STM32 状态估计与控制 |
+| [26H_Remake_Support](26H_Remake_Support/README.md) | Windows 资料制作、采集与分析 |
 
-## 问题
-目前对于控制方案的选取还未做数据整理，同时视觉方案仍然可以进行优化（毕竟Hailo的成本摆在这）
-同时视觉数据质量的分析也缺乏。
+## 当前问题
 
-## 运行
+- 控制方案尚未完成系统的数据对比。
+- Hailo 成本较高，视觉方案仍有优化空间。
+- 视觉数据质量分析仍需补充。
 
-树莓派正式部署目录是 **/home/ikun/vision_workspace/workspace**，Python 虚拟环境独立位于 **/home/ikun/vision_workspace/.venv**。**(vision_ws)** 只是终端提示名称。
+## 正式启动
 
-在树莓派终端依序执行以下三行：
+在树莓派执行：
 
-1. cd ~/vision_workspace/workspace
-2. source ~/vision_workspace/.venv/bin/activate
-3. python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
+```bash
+cd ~/vision_workspace/workspace
+source ~/vision_workspace/.venv/bin/activate
+python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page --serial-read-timeout-ms 1 --wifi-stream --no-display
+```
 
-模型缺少可自动核对几何 ID 的 **deployment.json**；详见 [来源与验证边界](26H_Remake_Raspderry/PROVENANCE.md)。
+## 文件放置
 
-## 按任务阅读
+- 树莓派运行代码、配置、生效标定和 HEF：`26H_Remake_Raspderry/`。
+- STM32 代码和构建配置：`26H_Remake_DJC/`。
+- ROI、标定、训练、CSV 采集和离线分析：`26H_Remake_Support/`。
+- 被 `.gitignore` 排除的本机目录不是现行工程；临时文件不要放仓库根目录。
 
-- 从 ROI、采图走到模型与 Task1：[Support 总览](26H_Remake_Support/README.md)与[操作命令](26H_Remake_Support/Docs/COMMANDS.md)。
-- 执行命令、平台和输出路径：[命令手册](26H_Remake_Support/Docs/COMMANDS.md)。
-- CSV 每列的含义：[资料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
-- 采集或分析测试数据：[Diagnostics 唯一入口](26H_Remake_Support/Diagnostics/README.md)。
-- 想复用架构：先看 [树莓派工程](26H_Remake_Raspderry/README.md) 与 [下位机工程](26H_Remake_DJC/README.md)，再按新机构替换 ROI、标定、模型及串口配置；不要把本机构的 JSON／HEF 直接当通用模板。
-
-## 新文件放置规则
-
-- 树莓派正式运行代码、运行配置、生效标定和 HEF 放 **26H_Remake_Raspderry/**。
-- STM32 业务代码、板级代码和构建配置放 **26H_Remake_DJC/**；不在固件工程中放 Windows 分析脚本。
-- ROI／标定／训练、CSV 采集和离线分析放 **26H_Remake_Support/**；新分析入口放 **Diagnostics/APP/**，原始测试记录放 **Data/TestRecords/**。
-- 生成文件前先查对应工程 README，以及 Support 的命令和格式说明；临时文件不放仓库根目录。
-- 被根 **.gitignore** 排除的本机目录和资料不属于这三个正式工程，不能作为现行路径、命令或架构依据。
-
-PT→HEF 在本地虚拟机完成，本仓库不提供该步命令。固件编译与烧录也由项目持有人完成。Windows Support 保存 2405 组 12–30°已标注图片及可追溯的标定资料；树莓派正式运行不需要这些原始资料。
+PT→HEF、固件编译和烧录由项目持有人完成，本仓库不提供通用命令。

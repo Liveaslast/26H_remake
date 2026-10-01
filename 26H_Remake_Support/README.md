@@ -1,33 +1,115 @@
-# Support｜资料制作与测试
+# Support｜资料制作、采集与分析
 
-Support 是 Windows 上的可复用工具与资料库，不参与树莓派正式视觉进程。正式运行包是同级 [26H_Remake_Raspderry](../26H_Remake_Raspderry/README.md)；下位机代码在 [26H_Remake_DJC](../26H_Remake_DJC/)。
+这是 Windows 工具与资料工程，不参与树莓派正式运行。按你现在要做的任务，直接进入对应小节。
 
-| 位置 | 用途 |
-|---|---|
-| **Vision/APP/** | ROI、标定、采图、框选、资料集整理与训练入口 |
-| **Vision/Config、Core、IO/** | 视觉工具的配置与实现 |
-| **Diagnostics/APP/** | CSV 采集、Task1 测试与分析入口 |
-| **Diagnostics/Core、IO/** | 诊断工具的实现 |
-| **Data/Calibration/** | 生效标定参考副本、来源图与展开图 |
-| **Data/Training/** | 12–30°图片、YOLO 标签和采集记录 |
-| **Data/Training/Models/** | 训练所得 PT；HEF 不放在这里 |
-| **Data/TestRecords/** | 视觉／控制测试 CSV |
-| **Docs/** | 命令、字段、流程与来源 |
+| 我要做什么 | 使用入口 | 结果放哪里 |
+|---|---|---|
+| [重新选 ROI、标定或采训练图](#1-重新制作视觉资料) | `Vision/APP/` | `Data/Calibration/`、`Data/Training/` |
+| [标注、整理数据集和训练 PT](#2-标注整理与训练) | `Vision/APP/` | `Data/Training/` |
+| [运行并分析 Task1](#3-task1) | `Diagnostics/APP/` | `Data/TestRecords/` |
+| [检查视觉质量或传输链路](#4-视觉诊断) | `Diagnostics/APP/` | `Data/TestRecords/` |
 
-## 工作顺序与入口
+`APP/` 中的文件才是可执行入口；`Core/`、`IO/`、`Config/` 只是内部实现。现有离线分析入口只有 `analyze_task1.py`、`analyze_vision_probe.py` 和 `analyze_vision.py`，不要为相同输入另建脚本。
 
-树莓派选 ROI、标定并采图 → Windows Support 框选、整理资料集、训练 PT → 本地虚拟机转换 HEF → 树莓派正式视觉与 STM32 任务 → Windows CSV 诊断。
+## 1. 重新制作视觉资料
 
-树莓派只负责识别并发送球状态；STM32 负责估计、电机控制和 Task1。Windows 采集的下位机 CSV 与树莓派逐帧 probe 可用于区分识别、传输和控制问题。
+平时正式运行不需要 Support。只有重做资料时，先在 Windows PowerShell 上传工具：
 
-只从两个任务入口开始：视觉资料制作见 [Vision/README.md](Vision/README.md)，CSV 采集、Task1 和全部分析脚本见 [Diagnostics/README.md](Diagnostics/README.md)。需要实际执行时查[命令手册](Docs/COMMANDS.md)，需要解释列名时查[数据格式](Docs/DATA_FORMAT.md)；[来源记录](Docs/PROVENANCE.md)只在追溯资料时阅读。
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+ssh ikun@192.168.137.2 "mkdir -p /home/ikun/vision_workspace/26H_Remake_Support/Data/Calibration/generated /home/ikun/vision_workspace/26H_Remake_Support/Data/Training/Captures"
+scp -r .\Vision ikun@192.168.137.2:/home/ikun/vision_workspace/26H_Remake_Support/
+```
 
-## 资料与部署边界
+然后在树莓派桌面终端执行：
 
-- 正式标定在树莓派 **~/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json**；本目录 **Data/Calibration/active** 是内容相同的 Windows 参考副本。JSON 实际包含 12、14、…、30°十个样本。
-- **Data/Training/steel_ball_12_30deg_exp10** 封存 2405 组 640×128 图片与同名 YOLO 标签。原始 **capture_session.json** 保留采集时的几何 ID，不为匹配现行 JSON 而改写。
-- 需要在树莓派重新选 ROI、标定或拍摄时，从 Windows 按需部署 **Vision/**；平时正式运行只需 **workspace**、顶层 **.venv** 及设备／驱动。
-- PT→HEF 在本地虚拟机完成；固件编译和烧录由项目持有人完成，这两步不在 Support 脚本中。
-- 已有的 **best.pt** 保存在 **Data/Training/Models/**，与树莓派正式运行的 **26H_Remake_Raspderry/assets/models/hailo/best.hef** 分开。NCNN 只在需要验证该后端时才导出。
+```bash
+cd ~/vision_workspace/26H_Remake_Support
+source ~/vision_workspace/.venv/bin/activate
 
-来源文件及整理取舍见 [PROVENANCE.md](Docs/PROVENANCE.md)。
+# 只看 ROI，不修改正式配置
+python3 Vision/APP/select_roi.py --camera /dev/video0 --preview Data/Calibration/roi_selection_preview.png
+
+# 重新标定；结果先进入 generated，不自动替换正式 JSON
+python3 Vision/APP/calibrate_geometry.py --camera /dev/video0 --angles 12,14,16,18,20,22,24,26,28,30 --positions=-10,-5,0,5,10 --exposure-time-absolute 10 --output-dir Data/Calibration/generated
+
+# 采集一个角度；其余角度修改 session 和 angle-deg
+python3 Vision/APP/capture_training_data.py --calibration ../workspace/assets/calibration/dynamic_calibration_12_30deg.json --output-dir Data/Training/Captures --session angle_12deg_exp10 --angle-deg 12 --exposure-time-absolute 10
+```
+
+现行 ROI 是 `(128,425,1141,121)`；正式标定含 12、14、…、30°十个样本。人工角度只用于标定和采图，不进入正式闭环。取回资料时复制完整会话目录，不要只复制 PNG。
+
+## 2. 标注、整理与训练
+
+在 Windows PowerShell 执行：
+
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+
+# 标注新采集会话
+python Vision\APP\annotate_ball.py --dataset-root Data\Training\Captures --pattern "angle_*deg_exp10"
+
+# 将封存的十角度资料整理为 train/val
+$angleDirs = Get-ChildItem Data\Training\steel_ball_12_30deg_exp10\by_angle -Directory -Filter 'angle_*' | Sort-Object Name
+$sourceArgs = foreach ($dir in $angleDirs) { '--source'; $dir.FullName }
+python Vision\APP\build_yolo_dataset.py @sourceArgs --output-dir Data\Training\Prepared
+
+# 训练；基础模型预先放到 Models/yolo26n.pt
+python Vision\APP\train_yolo.py --data Data\Training\Prepared\roi_ball.yaml --model Data\Training\Models\yolo26n.pt
+```
+
+PT 保存在 `Data/Training/Models/`。转换后的 HEF 经核对后放到树莓派工程的 `assets/models/hailo/`；本仓库不提供 PT→HEF 命令。`rename_dataset_files.py` 只有加 `--apply` 才会修改文件。
+
+## 3. Task1
+
+先确认 USART6 的实际 COM 号。MCU 复位、重新烧录或机械零点改变后才需要再次初始化：
+
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+python Diagnostics\APP\capture_mcu_csv.py --list-ports
+python Diagnostics\APP\capture_mcu_csv.py --port COM26 --mode listen --firmware-csv control --duration-s 1
+python Diagnostics\APP\initialize_zero.py --port COM26
+
+$task1Csv = "Data\TestRecords\task1_$(Get-Date -Format yyyyMMdd_HHmmss).csv"
+python Diagnostics\APP\run_task1.py --port COM26 --output $task1Csv
+python Diagnostics\APP\analyze_task1.py $task1Csv
+```
+
+`run_task1.py` 发送 `task 1`，退出时尝试发送 `task stop`。串口 BBP/BPUSH 覆盖只对当次运行有效，不会写回固件默认 profile。2026-09-27 的具体调参案例保存在 `Data/TestRecords/TASK1_TUNING_20260927.md`，不是日常前置阅读。
+
+## 4. 视觉诊断
+
+单独检查 Pi 每帧视觉时，先部署并运行质量采集脚本：
+
+```powershell
+cd D:\26H-remake\26H_Remake_Support
+scp .\Diagnostics\APP\capture_vision_quality.sh ikun@192.168.137.2:/home/ikun/vision_workspace/capture_vision_quality.sh
+```
+
+```bash
+EXPOSURE_TIME_ABSOLUTE=20 STATIC_DURATION=10 MOTION_DURATION=20 bash /home/ikun/vision_workspace/capture_vision_quality.sh
+```
+
+结果先保存在 Pi 的 `~/vision_workspace/diagnostics/`。完整取回到 `Data/TestRecords/` 后分析：
+
+```powershell
+python Diagnostics\APP\analyze_vision_probe.py Data\TestRecords\实际目录\static_probe.csv
+python Diagnostics\APP\analyze_vision_probe.py Data\TestRecords\实际目录\motion_probe.csv
+```
+
+要区分识别、传输和 STM32 估计问题，需在同一时段采集 Pi probe 和 MCU `vision` CSV：
+
+```powershell
+python Diagnostics\APP\capture_mcu_csv.py --port COM26 --mode listen --firmware-csv vision --duration-s 10
+python Diagnostics\APP\analyze_vision.py --mcu Data\TestRecords\mcu_vision_实际文件.csv --probe Data\TestRecords\vision_probe_实际文件.csv
+```
+
+probe 是 Pi 每处理一帧的内部记录；`vision` CSV 是 STM32 每 5 ms 的接收和估计状态；`control` CSV 是控制过程。三者不能互相代替。`capture_mcu_csv.py --mode` 控制是否发送任务命令，`--firmware-csv` 控制固件打印内容。
+
+## 文件规则与参考
+
+- 原始测试记录和单次结论放 `Data/TestRecords/`，不要放进代码目录。
+- 新分析能力优先扩展现有三个入口；复用算法放 `Diagnostics/Core/`，I/O 放 `Diagnostics/IO/`。
+- CSV 列定义见 [DATA_FORMAT.md](Docs/DATA_FORMAT.md)。资料来源只在追溯时查看 [PROVENANCE.md](Docs/PROVENANCE.md)。
+- 生效标定在树莓派 `assets/calibration/`；Support 的 `Data/Calibration/active/` 只是参考副本。
+- 封存训练资料共 2405 张图片及同名标签；正式树莓派运行不读取这些原始资料或 PT。

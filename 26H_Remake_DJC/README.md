@@ -11,6 +11,6 @@
 | **Core/**、**Drivers/**、**Middlewares/** | STM32 平台初始化、HAL 与中间件 |
 | **CMakeLists.txt**、**CMakePresets.json**、**cmake/** | 工程构建配置 |
 
-运行链路是 **CommunicationTask** 接收视觉包 → **BallStateTask** 估计球状态 → **GimbalTask** 执行电机控制；**DebugTask** 从 USART6 提供命令与 5 ms CSV 诊断。**DebugCommand.h**、**VisionFrame.h** 定义对应的命令与视觉资料格式。Task1 和机械零点的操控由 Windows [Support 命令手册](../26H_Remake_Support/Docs/COMMANDS.md)提供；CSV 各列见 [资料格式](../26H_Remake_Support/Docs/DATA_FORMAT.md)。
+运行链路是 **CommunicationTask** 接收视觉包 → **BallStateTask** 估计球状态 → **GimbalTask** 执行电机控制；**DebugTask** 从 USART6 提供命令与 5 ms CSV 诊断。**DebugCommand.h**、**VisionFrame.h** 定义对应的命令与视觉资料格式。Task1、机械零点和数据分析见 Windows [Support README](../26H_Remake_Support/README.md)；CSV 各列见 [资料格式](../26H_Remake_Support/Docs/DATA_FORMAT.md)。
 
 本 README 只导航代码责任。固件编译与烧录由项目持有人完成，不在这里提供可能与实际硬件环境不符的通用指令。
