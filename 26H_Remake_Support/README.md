@@ -1,15 +1,13 @@
 # Support｜资料制作、采集与分析
 
-这是 Windows 工具与资料工程，不参与树莓派正式运行。按你现在要做的任务，直接进入对应小节。
-
-| 我要做什么 | 使用入口 | 结果放哪里 |
+| 步骤 | 使用入口 | 结果存放路径 |
 |---|---|---|
 | [重新选 ROI、标定或采训练图](#1-重新制作视觉资料) | `Vision/APP/` | `Data/Calibration/`、`Data/Training/` |
 | [标注、整理数据集和训练 PT](#2-标注整理与训练) | `Vision/APP/` | `Data/Training/` |
 | [运行并分析 Task1](#3-task1) | `Diagnostics/APP/` | `Data/TestRecords/` |
 | [检查视觉质量或传输链路](#4-视觉诊断) | `Diagnostics/APP/` | `Data/TestRecords/` |
 
-`APP/` 中的文件才是可执行入口；`Core/`、`IO/`、`Config/` 只是内部实现。现有离线分析入口只有 `analyze_task1.py`、`analyze_vision_probe.py` 和 `analyze_vision.py`，不要为相同输入另建脚本。
+
 
 ## 工具脚本总表
 
