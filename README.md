@@ -29,6 +29,15 @@
 - 从 ROI、采图走到模型与 Task1：[Support 总览](26H_Remake_Support/README.md)与[操作命令](26H_Remake_Support/Docs/COMMANDS.md)。
 - 执行命令、平台和输出路径：[命令手册](26H_Remake_Support/Docs/COMMANDS.md)。
 - CSV 每列的含义：[资料格式](26H_Remake_Support/Docs/DATA_FORMAT.md)。
+- 采集或分析测试数据：[Diagnostics 唯一入口](26H_Remake_Support/Diagnostics/README.md)。
 - 想复用架构：先看 [树莓派工程](26H_Remake_Raspderry/README.md) 与 [下位机工程](26H_Remake_DJC/README.md)，再按新机构替换 ROI、标定、模型及串口配置；不要把本机构的 JSON／HEF 直接当通用模板。
+
+## 新文件放置规则
+
+- 树莓派正式运行代码、运行配置、生效标定和 HEF 放 **26H_Remake_Raspderry/**。
+- STM32 业务代码、板级代码和构建配置放 **26H_Remake_DJC/**；不在固件工程中放 Windows 分析脚本。
+- ROI／标定／训练、CSV 采集和离线分析放 **26H_Remake_Support/**；新分析入口放 **Diagnostics/APP/**，原始测试记录放 **Data/TestRecords/**。
+- 生成文件前先查对应工程 README，以及 Support 的命令和格式说明；临时文件不放仓库根目录。
+- 被根 **.gitignore** 排除的本机目录和资料不属于这三个正式工程，不能作为现行路径、命令或架构依据。
 
 PT→HEF 在本地虚拟机完成，本仓库不提供该步命令。固件编译与烧录也由项目持有人完成。Windows Support 保存 2405 组 12–30°已标注图片及可追溯的标定资料；树莓派正式运行不需要这些原始资料。

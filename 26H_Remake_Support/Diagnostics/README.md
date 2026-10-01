@@ -1,30 +1,35 @@
-# Diagnostics｜采集与分析
+# Diagnostics｜采集与分析唯一入口
 
-诊断工具在正式视觉之外采集和分析数据，不改识别或下位机控制逻辑。Windows 执行串口采集和离线分析；Pi 的 vision probe 使用同一正式 **best/run.py**，额外写逐帧 CSV。
+这里负责测试数据的采集与离线分析，不修改正式视觉或下位机控制逻辑。第一次使用先按任务选择下面一条流程；完整参数只到[命令手册](../Docs/COMMANDS.md)查，不在本页重复维护。
 
-| **APP/** 入口 | 平台 | 用途 |
-|---|---|---|
-| **capture_mcu_csv.py** | Windows | 采集 USART6 的 **vision** 或 **control** 行，附主机时间 |
-| **capture_vision_csv.sh** | 树莓派，按需部署 | 启动正式视觉并打开 probe；也可直接使用命令手册的正式命令 |
-| **capture_vision_quality.sh** | 树莓派，按需部署 | 依次采集当前正式视觉的10 s静止与20 s自然运动probe，曝光可显式覆盖，结果集中写入diagnostics |
-| **capture_motion_quality.sh** | 树莓派，按需部署 | 只采集自然运动probe，适合光照或曝光单项复测 |
-| **analyze_vision_probe.py** | Windows | 单份 probe 的帧率、valid、更新间隔与座标事件 |
-| **analyze_vision.py** | Windows | 对齐 Pi probe 与 STM32 vision CSV |
-| **initialize_zero.py** | Windows | 发送 **task init** 设定下位机零点 |
-| **run_task1.py**、**analyze_task1.py** | Windows | 启动／记录及按约5 ms数据分析Task1；支持通过已有串口命令临时覆盖BBP/BPUSH |
+## 按任务选择
 
-**capture_mcu_csv.py** 的 **--mode** 决定是否顺便发 **ba 22**／**task 1**；**--firmware-csv** 决定下位机打印 **vision**、**control** 或关闭。两者互不等价。固件启动默认为 **control**；切到 **vision** 后，Task1 前要切回 **control**。
+| 任务 | 采集入口 | 分析入口 | 回答的问题 |
+|---|---|---|---|
+| Task1 控制过程 | `initialize_zero.py`（仅复位/零点改变后）→ `run_task1.py` | `analyze_task1.py` | 正负向穿越、超调、BBP/BPUSH/BTERM 时序、角度跟随、最终误差和阶段状态 |
+| 单份 Pi 视觉质量 | `capture_vision_csv.sh`、`capture_vision_quality.sh` 或 `capture_motion_quality.sh` | `analyze_vision_probe.py` | 帧率、处理耗时、valid、更新空窗、静态抖动及坐标事件 |
+| Pi→STM32 视觉链路 | 同时采集 Pi probe 与 `capture_mcu_csv.py --firmware-csv vision` | `analyze_vision.py` | 问题发生在 Pi 识别、串口传输还是 STM32 估计 |
 
-**control** 与 **vision** 固件 CSV 均按 5 ms 打印。probe 则是树莓派每处理完一帧所写的观测，记录耗时、bbox／球位置、valid 与角度；它不是串口收包，也不表示逐帧发包。比较 probe、下位机 vision 与 control，才能区分识别、传输和控制端的问题。
+三个 `analyze_*.py` 是当前全部离线分析入口。它们只读 CSV；不要为相同输入和指标另建平行脚本。
 
-完整命令见 [COMMANDS.md](../Docs/COMMANDS.md)，逐列定义见 [DATA_FORMAT.md](../Docs/DATA_FORMAT.md)。**Core/** 和 **IO/** 是入口依赖，不直接运行。清理后 **~/vision_workspace/diagnostics** 可在下次 probe 采集前重新建立。
+## 先分清三类数据
 
-`capture_vision_quality.sh`默认保持正式配置的数值10。可用环境变量显式设置：
+- **probe**：正式 `best/run.py` 每处理一帧写一行，不经过 USART6，也不代表每帧实际发包。
+- **vision CSV**：STM32 每 5 ms 打印最近视觉包及内部估计，用于检查接收、valid 和数据年龄。
+- **control CSV**：STM32 每 5 ms 打印控制状态，用于 Task1、角度和 BBP/BPUSH 分析。
 
-```bash
-EXPOSURE_TIME_ABSOLUTE=20 STATIC_DURATION=10 MOTION_DURATION=20 bash /home/ikun/vision_workspace/capture_vision_quality.sh
-```
+`capture_mcu_csv.py --mode` 控制是否发送任务命令；`--firmware-csv` 控制固件打印 `vision`、`control` 或关闭，两者不等价。固件复位后默认为 `control`；切到 `vision` 后，运行 Task1 前要切回 `control`。
 
-本摄像头已核实该控件单位为100 us，因此10是1 ms、20是2 ms。脚本把数值写入session，并将结果目录命名为`vision_quality_exp20_<时间戳>`。静态和动态CSV都用同一个`analyze_vision_probe.py`分析。
+## 目录与新增文件
 
-Task1本轮的逐步定位、失败试验、最终临时参数和剩余边界见 [TASK1_TUNING_EXPERIENCE.md](TASK1_TUNING_EXPERIENCE.md)。特别注意：串口覆盖不会自动写回固件默认profile。
+- `APP/`：唯一可直接执行的入口；`Core/` 和 `IO/` 只供入口调用。
+- 原始 CSV 和整组测试结果放 `Data/TestRecords/`；Pi 可先暂存于 `~/vision_workspace/diagnostics/` 再完整取回。
+- 单次试验结论放对应记录目录的 `analysis_summary.md`；可跨试验复用的规则才写进 `Diagnostics/` 或 `Docs/`。
+- 新分析能力优先扩展现有三个入口；复用算法放 `Core/`，串口/文件读写放 `IO/`。
+- 新增或改变 CSV 列时更新[数据格式](../Docs/DATA_FORMAT.md)；新增命令时更新[命令手册](../Docs/COMMANDS.md)。
+
+## 按需阅读
+
+- [命令手册](../Docs/COMMANDS.md)：可复制执行的完整命令、平台和输出位置。
+- [数据格式](../Docs/DATA_FORMAT.md)：control、vision 和 probe 的逐列定义。
+- [Task1 2026-09-27 调参复盘](../Data/TestRecords/TASK1_TUNING_20260927.md)：具体实验案例，不是日常操作前置阅读；串口临时覆盖不会写回固件默认 profile。

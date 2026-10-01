@@ -20,7 +20,7 @@ Support 是 Windows 上的可复用工具与资料库，不参与树莓派正式
 
 树莓派只负责识别并发送球状态；STM32 负责估计、电机控制和 Task1。Windows 采集的下位机 CSV 与树莓派逐帧 probe 可用于区分识别、传输和控制问题。
 
-视觉工具见 [Vision/README.md](Vision/README.md)，CSV 与 Task1 工具见 [Diagnostics/README.md](Diagnostics/README.md)。按步执行见 [COMMANDS.md](Docs/COMMANDS.md)，数据字段见 [DATA_FORMAT.md](Docs/DATA_FORMAT.md)；来源与取舍见 [PROVENANCE.md](Docs/PROVENANCE.md)。
+只从两个任务入口开始：视觉资料制作见 [Vision/README.md](Vision/README.md)，CSV 采集、Task1 和全部分析脚本见 [Diagnostics/README.md](Diagnostics/README.md)。需要实际执行时查[命令手册](Docs/COMMANDS.md)，需要解释列名时查[数据格式](Docs/DATA_FORMAT.md)；[来源记录](Docs/PROVENANCE.md)只在追溯资料时阅读。
 
 ## 资料与部署边界
 

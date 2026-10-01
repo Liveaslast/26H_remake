@@ -111,7 +111,7 @@ Task1 前把固件 CSV 切回 **control**（13 列，每 5 ms）：
 2. python Diagnostics\APP\run_task1.py --port COM26 --bbp-short 0.35 3.0 4.0 5.0 --bbp-long 0.45 4.5 4.0 10.0 --bbp-negative-max 4.0 --bpush-positive 0 0 0 0 --bpush-negative 1.0 2.0 2.0 2.0 --output $task1Csv
 3. python Diagnostics\APP\analyze_task1.py $task1Csv
 
-参数依据、逐5 ms分析方法和已知锁存边界见 [TASK1_TUNING_EXPERIENCE.md](../Diagnostics/TASK1_TUNING_EXPERIENCE.md)。
+参数依据、逐 5 ms 分析方法和已知锁存边界见 [Task1 2026-09-27 调参复盘](../Data/TestRecords/TASK1_TUNING_20260927.md)。该文件是具体实验案例，不是日常入口。
 
 ## 5. 树莓派逐帧 probe 与联合分析
 
