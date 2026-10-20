@@ -17,11 +17,7 @@ if str(SUPPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(SUPPORT_ROOT))
 
 from Vision.Config.paths import (  # noqa: E402
-    LAST_MODEL,
     MODEL_DIR,
-    MODEL_RUNS_DIR,
-    TRAINED_MODEL,
-    WORKSPACE_ROOT,
 )
 from Vision.Config.config import (  # noqa: E402
     add_config_argument,
@@ -64,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int)
     parser.add_argument("--project", type=Path)
     parser.add_argument("--name")
+    parser.add_argument(
+        "--publish-dir",
+        type=Path,
+        help="best.pt/last.pt 发布目录；不指定时沿用旧 Data/Training/Models",
+    )
     parser.add_argument(
         "--resume-from",
         type=Path,
@@ -213,11 +214,18 @@ def run(args: argparse.Namespace) -> Path:
         raise RuntimeError(f"训练结束但找不到best.pt：{best_path}")
 
     save_dir = Path(str(trainer.save_dir)).resolve()
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(best_path, TRAINED_MODEL)
+    publish_dir = (
+        MODEL_DIR
+        if args.publish_dir is None
+        else args.publish_dir.expanduser().resolve()
+    )
+    published_best = publish_dir / "best.pt"
+    published_last = publish_dir / "last.pt"
+    publish_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(best_path, published_best)
     last_path = Path(str(trainer.last)).resolve()
     if last_path.is_file():
-        shutil.copy2(last_path, LAST_MODEL)
+        shutil.copy2(last_path, published_last)
     model_geometry = {
         "schema": "steel-ball-model-geometry/v1",
         "geometry_id": geometry_id,
@@ -225,7 +233,7 @@ def run(args: argparse.Namespace) -> Path:
         "input_width": dataset_width,
         "dataset_manifest": str(manifest_path),
     }
-    for published in (TRAINED_MODEL, LAST_MODEL):
+    for published in (published_best, published_last):
         if published.is_file():
             published.with_suffix(published.suffix + ".geometry.json").write_text(
                 json.dumps(model_geometry, ensure_ascii=False, indent=2) + "\n",
@@ -242,9 +250,9 @@ def run(args: argparse.Namespace) -> Path:
         "initial_model": str(model_path),
         "best_model": str(best_path),
         "last_model": str(last_path),
-        "published_best_model": str(TRAINED_MODEL),
+        "published_best_model": str(published_best),
         "published_last_model": (
-            str(LAST_MODEL) if last_path.is_file() else None
+            str(published_last) if last_path.is_file() else None
         ),
         "image_geometry": {
             "dataset_width": dataset_width,
@@ -262,8 +270,8 @@ def run(args: argparse.Namespace) -> Path:
         encoding="utf-8",
     )
     print(f"Best model: {best_path}", flush=True)
-    print(f"Published short path: {TRAINED_MODEL}", flush=True)
-    return TRAINED_MODEL
+    print(f"Published short path: {published_best}", flush=True)
+    return published_best
 
 
 def main() -> int:

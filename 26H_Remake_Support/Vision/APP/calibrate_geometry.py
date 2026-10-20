@@ -146,6 +146,8 @@ def run(
 ) -> int:
     geometry = build_calibration_geometry(args, angles, positions)
     output_dir = args.output_dir.expanduser().resolve()
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise FileExistsError(f"标定输出目录已存在且非空，拒绝覆盖：{output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     canonical_size = geometry.canonical_size
     mode = geometry.camera_mode
@@ -228,7 +230,7 @@ def main() -> int:
     except KeyboardInterrupt:
         print("Test calibration cancelled.", flush=True)
         return 130
-    except (DynamicCalibrationError, RuntimeIOError, cv2.error) as exc:
+    except (DynamicCalibrationError, RuntimeIOError, FileExistsError, cv2.error) as exc:
         print(f"Test calibration failed: {exc}", flush=True)
         return 1
 

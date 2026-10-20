@@ -11,7 +11,7 @@ from typing import Any, Sequence
 import cv2
 import numpy as np
 
-from .ncnn_backend import _letterbox, _normalize_image_size
+from .preprocessing import letterbox, normalize_image_size
 
 
 @dataclass(frozen=True, slots=True)
@@ -261,10 +261,10 @@ class NativeHailoRtBackend:
         del verbose
         if classes is not None and 0 not in classes:
             return [SimpleNamespace(boxes=_Boxes(np.empty((0, 6), dtype=np.float32)), timings=HailoRtTimings())]
-        image_size = _normalize_image_size(imgsz)
+        image_size = normalize_image_size(imgsz)
         source_array = np.asarray(source)
         t0 = cv2.getTickCount()
-        padded, ratio, (pad_x, pad_y) = _letterbox(source_array, image_size)
+        padded, ratio, (pad_x, pad_y) = letterbox(source_array, image_size)
         rgb = cv2.cvtColor(padded, cv2.COLOR_BGR2RGB)
         batched = np.expand_dims(np.ascontiguousarray(rgb, dtype=np.uint8), axis=0)
         preprocess_ms = (cv2.getTickCount() - t0) * 1000.0 / cv2.getTickFrequency()

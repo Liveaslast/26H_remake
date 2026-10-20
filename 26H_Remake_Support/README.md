@@ -1,6 +1,11 @@
 # Support｜资料制作、采集与分析
 
-| 步骤 | 使用入口 | 结果存放路径 |
+> 当前通信使用任务/调参两模式，帧格式已变更。Vision/IO/camera_telemetry.py 已适配：先确认任务模式再读取角度，不发送运动任务。正式程序、MCU 和此工具必须配套更新；旧历史 CSV 不修改。当前协议以 [通信说明](../26H_Remake_Raspderry/ballbeam/communication/README.md) 为准。
+
+这是 Windows 工具与资料工程，不参与树莓派正式运行。按你现在要做的任务，直接进入对应小节。
+
+| 我要做什么 | 使用入口 | 结果放哪里 |
+>>>>>>> 21fd4e5 (Update Communication jiagou between pi & mcu)
 |---|---|---|
 | [重新选 ROI、标定或采训练图](#1-重新制作视觉资料) | `Vision/APP/` | `Data/Calibration/`、`Data/Training/` |
 | [标注、整理数据集和训练 PT](#2-标注整理与训练) | `Vision/APP/` | `Data/Training/` |
@@ -28,13 +33,14 @@
 | 脚本 | 平台 | 用途 | 输入 → 输出 |
 |---|---|---|---|
 | `Diagnostics/APP/capture_mcu_csv.py` | Windows | 读取 USART6 的 `control` 或 `vision` 调试流并附主机时间 | STM32 串口 → `Data/TestRecords/` CSV |
-| `Diagnostics/APP/initialize_zero.py` | Windows | MCU 复位、烧录或机械零点改变后发送一次 `task init` | 操作者确认机械零点 → 下位机零点和 22°平衡角 |
-| `Diagnostics/APP/run_task1.py` | Windows | 启动 `0 → +5 → -5 cm` Task1 并记录控制数据 | STM32 串口、可选临时参数 → Task1 control CSV |
+| `Diagnostics/APP/initialize_zero.py` | Windows | 操作者确认机械零点后发送一次 `task init`；通常在 MCU 复位、烧录或零点改变后使用 | 下位机重设零点并设当前 profile 的 21°平衡角（地面测试值） |
+| `Diagnostics/APP/run_task1.py` | Windows | 启动 `0 → +5 → -5 cm` Task1 并记录控制数据 | STM32 串口 → Task1 control CSV |
 | `Diagnostics/APP/analyze_task1.py` | Windows | 分析 Task1 的穿越、超调、制动、角度跟随和阶段完成情况 | Task1 control CSV → 终端分析报告 |
+| `Diagnostics/APP/plot_task1.m` | Windows MATLAB | 同一时间轴查看 Task1 波形；新 CSV 显示目标速度、速度误差、P/I 角度和积分权重，以及外环实际采样的离散 `x/v` | Task1 control CSV → MATLAB 图窗；不修改 CSV |
 | `Diagnostics/APP/capture_vision_csv.sh` | 树莓派 | 用正式 `best/run.py` 开启一次逐帧 probe | 正式视觉进程 → 单份 `vision_probe_*.csv` |
-| `Diagnostics/APP/capture_vision_quality.sh` | 树莓派 | 依次采集静止和自然运动 probe，可用环境变量覆盖曝光与时长 | 曝光值、静止/运动时长 → 两份 probe、相机控件和运行日志 |
+| `Diagnostics/APP/capture_vision_quality.sh` | 树莓派 | 按多个曝光值依次采集静止和自然运动 probe，每阶段有提示和相机控件核验 | 曝光值、静止/运动时长 → 各组 probe、相机控件和运行日志 |
 | `Diagnostics/APP/capture_motion_quality.sh` | 树莓派 | 只复测自然运动，适合比较照明或曝光 | 曝光值、运动时长 → `motion_probe.csv` 和运行日志 |
-| `Diagnostics/APP/analyze_vision_probe.py` | Windows | 分析单份 probe 的帧率、耗时、有效率、空窗、抖动和坐标事件 | Pi probe CSV → 终端质量报告 |
+| `Diagnostics/APP/analyze_vision_probe.py` | Windows | 分析单份 probe 的时序和坐标质量；可选逐帧差分与多点斜率对比 | Pi probe CSV → 终端质量报告 |
 | `Diagnostics/APP/analyze_vision.py` | Windows | 联合检查 Pi 识别、串口传输和 STM32 估计 | 同时段 Pi probe + MCU vision CSV → 对齐分析报告 |
 
 `EXPOSURE_TIME_ABSOLUTE` 的单位已核实为 100 μs：数值 10 是 1 ms，20 是 2 ms。`__init__.py` 只是 Python 包标记，不是工具脚本。
@@ -100,40 +106,65 @@ PT 保存在 `Data/Training/Models/`。转换后的 HEF 经核对后放到树莓
 
 ## 3. Task1
 
-先确认 USART6 的实际 COM 号。MCU 复位、重新烧录或机械零点改变后才需要再次初始化：
+固定球速短行程测试复用 Pi 正式入口的 `--task-console --task1-csv --vision-probe-csv`，并加 `--velocity-test +2`、`-2`、`+5` 或 `-5`。该测试保持恒定球速目标，不加入制动阶段；到达行程边界或触发安全条件后结束。记录仍由 `analyze_task1.py` 处理，`target_v` 为 MCU 外环实际速度指令。需要 Pi 和 MCU 的 40 字节 0x85 诊断协议配套更新；详细边界见 [Pi README](../26H_Remake_Raspderry/README.md)。
+
+电脑通过 USART6 运行 Task1 时，先确认实际 COM 号。`run_task1.py` 自己会在每次运行开头发送 `task init`，这里不要再额外运行一次 `initialize_zero.py`：
 
 ```powershell
 cd D:\26H-remake\26H_Remake_Support
 python Diagnostics\APP\capture_mcu_csv.py --list-ports
 python Diagnostics\APP\capture_mcu_csv.py --port COM26 --mode listen --firmware-csv control --duration-s 1
-python Diagnostics\APP\initialize_zero.py --port COM26
 
 $task1Csv = "Data\TestRecords\task1_$(Get-Date -Format yyyyMMdd_HHmmss).csv"
 python Diagnostics\APP\run_task1.py --port COM26 --output $task1Csv
 python Diagnostics\APP\analyze_task1.py $task1Csv
 ```
 
-`run_task1.py` 发送 `task 1`，退出时尝试发送 `task stop`。串口 BBP/BPUSH 覆盖只对当次运行有效，不会写回固件默认 profile。2026-09-27 的具体调参案例保存在 `Data/TestRecords/TASK1_TUNING_20260927.md`，不是日常前置阅读。
+需要看波形时，在 MATLAB 中运行 `addpath('D:\26H-remake\26H_Remake_Support\Diagnostics\APP')`，再运行 `plot_task1('D:\26H-remake\26H_Remake_Support\Data\TestRecords\task1_pv_20260923_050921\control.csv')`；第二个参数可选，指定显示的前几秒。脚本只调用 MATLAB 自带的 `readtable` 和 `stackedplot`，不需要额外工具箱。新 CSV 的 `i_inferred_deg` 是按当前 Task1 profile 从角度命令反推的积分贡献，**不是下位机直接发送的积分字段**；角度限幅时会留空，旧参数试验的复算参数需与当时固件核对。图中的速度是下位机**估计值**，电机角是编码器读数，不是梁实际倾角。
+
+旧 CSV 每 5 ms 由通信任务采样一次，外环约每 20 ms 在电机任务中计算，两者未同步；每隔四行抽点只是近似。配套更新固件和 Pi 后，新 CSV 另有 `control_ms/control_x/control_v`，记录外环实际计算时的时间和输入位置、速度；MATLAB 脚本会自动另开窗口显示这些去重后的离散点，旧 CSV 仍只显示原波形。
+
+`run_task1.py` 先要求操作者确认机械零位，再发送 `task init`（设零点并命令当前 profile 的 21°）；待杆角稳定后输入 `task 1` 启动任务。固件使用位置—速度双环；下位机 USART6 的现行调参命令见 [下位机 README](../26H_Remake_DJC/README.md)。旧 BBP/BPUSH 文本调参入口和 `capture_task1.py` 对应可选覆盖参数已删除，历史数据及调参记录仍保留。Ctrl+C 只退出电脑端，操作者手动复位下位机。
+
+另一种触发方式是配套更新树莓派与下位机后，在 Pi 正式视觉入口加 `--task-console`：先确认机械零位并执行 `task init`，再输入 `task 1` 启动视觉和任务。Ctrl+C 只退出树莓派进程，随后由操作者手动复位下位机。握手细节见 [Pi README](../26H_Remake_Raspderry/README.md) 和 [STM32 README](../26H_Remake_DJC/README.md)。默认仍不生成 CSV；需要 Task1 控制 CSV 时再加 `--task1-csv`，Pi 通过原视觉串口采集下位机诊断帧，生成与本节 **同一个** `analyze_task1.py` 兼容的文件，无需电脑 USART6 USB-TTL。Task1 CSV 默认采集 5 秒；若同时开启视觉 probe，它也在 5 秒后停录，但程序仍运行直到 Ctrl+C。需要看完整任务序列时，可显式加 `--task1-capture-s 8` 或更长。2026-10-06 首次采集已得到有效 CSV，显示任务未进入 −5 cm 阶段。纯视觉质量 CSV 使用已有独立采集脚本，且不会自动重设零点。
+
+离线比较相邻帧差分与 3/5 帧最小二乘速度，沿用 `analyze_vision_probe.py`：`python Diagnostics\APP\analyze_vision_probe.py Data\TestRecords\task1_fw_20261006_01\vision_probe.csv --control-period-ms 20 --velocity-fit-compare --velocity-fit-end-s 2`。比较使用逐帧 `sent_x_cm` 和实际图像时间戳；下一帧预测误差只是内部一致性指标，不是高速运动的绝对真值。固件已有最小二乘速度函数，但当前未调用；此命令不会改变线上控制速度。
 
 ## 4. 视觉诊断
 
-单独检查 Pi 每帧视觉时，先部署并运行质量采集脚本：
+`capture_vision_quality.sh` 默认 `DETECTION_INTERVAL=1`，每帧 YOLO。要在相同静态／动态流程比较现有 YOLO+OpenCV 光流，设 `DETECTION_INTERVAL=2`；它会在两次 YOLO 之间跟踪一帧，并在结果目录名与 `session.txt` 中记录 `_flow2`／实际间隔。先比较视觉质量，再决定是否用于 Task1；这不是另一套新视觉程序。
+
+单独检查 Pi 每帧视觉前，先自行在本地完成机械零点初始化，确认控制任务已停止、杆角在 12–30°标定范围内。当前地面测试固件的 `task init` 已包含设 21°，无需再发 `ba 21`；桌面曾在 22°附近平衡，不能把地面的 21°直接沿用到桌面。采集脚本本身不会发送初始化或角度指令，也不会在不同曝光或静动态阶段之间重新初始化。
+
+在 Windows PowerShell 上传采集脚本：
 
 ```powershell
 cd D:\26H-remake\26H_Remake_Support
 scp .\Diagnostics\APP\capture_vision_quality.sh ikun@192.168.137.2:/home/ikun/vision_workspace/capture_vision_quality.sh
 ```
 
+然后在树莓派终端运行；静态和动态阶段各 15 秒，每阶段会提示何时按 Enter。实验中保持暗场照明和测试动作尽量一致：
+
 ```bash
-EXPOSURE_TIME_ABSOLUTE=20 STATIC_DURATION=10 MOTION_DURATION=20 bash /home/ikun/vision_workspace/capture_vision_quality.sh
+LIGHTING_LABEL=dark EXPOSURE_VALUES="80" STATIC_DURATION=15 MOTION_DURATION=15 bash /home/ikun/vision_workspace/capture_vision_quality.sh
 ```
 
-结果先保存在 Pi 的 `~/vision_workspace/diagnostics/`。完整取回到 `Data/TestRecords/` 后分析：
+`EXPOSURE_VALUES` 用空格分隔，单位 100 μs；`80` 是 8 ms。默认后端为 HailoRT；若要比较旧 NCNN 原生后端，在同一命令前加 `INFERENCE_BACKEND=ncnn`。脚本对两者统一使用每帧 YOLO、bbox 中心并关闭圆拟合，不开启 OpenCV 中间帧跟踪；NCNN 的历史模型几何差异会明确警告，必须先确认坐标合理，不能仅凭脚本成功就进入闭环 Task1。结果目录形如 `~/vision_workspace/diagnostics/vision_quality_dark_hailort_时间/exp80/` 或 `vision_quality_dark_ncnn_时间/exp80/`，包含 probe、日志、会话信息和静态/动态各自的相机控件核验记录；控件不符会停止采集。脚本结束会打印实际结果目录。
+
+在 Windows PowerShell 中取回**整个结果目录**，将下面的时间换为刚才打印的实际值，再用同一个分析入口处理每组：
 
 ```powershell
-python Diagnostics\APP\analyze_vision_probe.py Data\TestRecords\实际目录\static_probe.csv
-python Diagnostics\APP\analyze_vision_probe.py Data\TestRecords\实际目录\motion_probe.csv
+cd D:\26H-remake\26H_Remake_Support
+$run = "vision_quality_dark_ncnn_实际时间"
+scp -r "ikun@192.168.137.2:/home/ikun/vision_workspace/diagnostics/$run" .\Data\TestRecords\
+foreach ($exp in 80) {
+    $dir = Join-Path (Join-Path 'Data\TestRecords' $run) "exp$exp"
+    python Diagnostics\APP\analyze_vision_probe.py (Join-Path $dir 'static_probe.csv') --control-period-ms 20 | Tee-Object -FilePath (Join-Path $dir 'static_analysis.txt')
+    python Diagnostics\APP\analyze_vision_probe.py (Join-Path $dir 'motion_probe.csv') --control-period-ms 20 | Tee-Object -FilePath (Join-Path $dir 'motion_analysis.txt')
+}
 ```
+
+这组 probe 只评价视觉本身；人工推动的动态动作很难完全相同，比较时要同时看球速分布，不能只按有效率排序。`--control-period-ms 20` 用 Task1 当前外环周期标记视觉更新空窗，不代表此次测试启用了 Task1。
 
 要区分识别、传输和 STM32 估计问题，需在同一时段采集 Pi probe 和 MCU `vision` CSV：
 

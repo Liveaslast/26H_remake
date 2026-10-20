@@ -6,6 +6,7 @@
 #include "CommunicationTask.h"
 #include "Serial.h"
 #include "VisionFrame.h"
+#include "SystemID.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -15,25 +16,23 @@ extern BallBeamController qd_controller;
 
 namespace {
 
-constexpr uint16_t kLineBufferSize = 96U;
-constexpr float kDegToRad = 0.0174532925f;
-constexpr float kRadToDeg = 57.2957795f;
-constexpr uint32_t kControlCsvPeriodMs = 5U;
+constexpr uint16_t kLineBufferSize = 96U;       // 下位机接收缓冲区大小
+constexpr float kDegToRad = 0.0174532925f;      // 角度转弧度
+constexpr float kRadToDeg = 57.2957795f;        // 弧度转角度
+constexpr uint32_t kCsvPeriodMs = 5U;           // CSV打印周期
 
-enum class CsvMode : uint8_t {
-    Vision,
-    Control,
-    Off,
+enum class CsvMode : uint8_t {                  // CSV打印模式枚举类型
+    Vision,                                         // 视觉数据打印模式
+    Control,                                        // 控制数据打印模式
+    Sysid,                                          // 系统辨识数据打印模式(为未来MPC或者LQR控制器设计预留)
+    Off,                                            // 关闭CSV打印
 };
 
-char line_buffer[kLineBufferSize] = {};
+char line_buffer[kLineBufferSize] = {};         // 下位机接收缓冲区
 uint16_t line_length = 0U;
-float debug_current = 0.0f;
-float current_step = 0.05f;
+bool discard_line = false;                     // 命令不完整时丢弃到下一个换行
 uint32_t last_csv_ms = 0U;
-CsvMode csv_mode = CsvMode::Control;
-float last_debug_x_cm = 0.0f;
-bool has_last_debug_x = false;
+CsvMode csv_mode = CsvMode::Control;            // 该变量用于记录当前的CSV打印模式，默认为控制数据打印模式
 
 char *NextToken()
 {
@@ -56,105 +55,80 @@ bool ParseFloat(char *token, float *value)
     return true;
 }
 
-bool ParseThreeFloats(float *a, float *b, float *c)
+void PrintCsvSample()                                   // 控制模式打印机
 {
-    return ParseFloat(NextToken(), a) && ParseFloat(NextToken(), b) && ParseFloat(NextToken(), c);
-}
-
-bool ParseFourFloats(float *a, float *b, float *c, float *d)
-{
-    return ParseThreeFloats(a, b, c) && ParseFloat(NextToken(), d);
-}
-
-bool ParseThreeOrFourFloats(float *a, float *b, float *c, float *d)
-{
-    if (!ParseThreeFloats(a, b, c)) {
-        return false;
-    }
-    char *optional = NextToken();
-    if (optional == nullptr) {
-        *d = 0.0f;
-        return true;
-    }
-    return ParseFloat(optional, d);
-}
-
-void PrintFixed2(const char *prefix, float value, const char *suffix)
-{
-    if (!std::isfinite(value)) {
-        Serial_Printf("%s0.00%s", prefix, suffix);
-        return;
+    BallStateEstimate_t state = {};                        // 该变量用于存储球杆系统状态
+    if (BallStateGetLatest(&state) == 0U) {
+        state.vision_age_ms = 9999U;
     }
 
-    int32_t scaled = static_cast<int32_t>(std::lround(value * 100.0f));
-    const char *sign = "";
-    if (scaled < 0) {
-        sign = "-";
-        scaled = -scaled;
-    }
-
-    Serial_Printf("%s%s%ld.%02ld%s", prefix, sign, scaled / 100L, scaled % 100L, suffix);
+    Serial_Printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,%u,%u,%u,%u,%u,%lu\r\n",
+                static_cast<long>(std::lround(state.x_cm * 100.0f)),
+                static_cast<long>(std::lround(qd_controller.getBallTarget() * 100.0f)),
+                static_cast<long>(std::lround(state.vx_cm_s * 100.0f)),
+                static_cast<long>(std::lround(qd_controller.motor_angle * kRadToDeg * 100.0f)),
+                static_cast<long>(std::lround(qd_controller.getBallAngleCommand() * kRadToDeg * 100.0f)),
+                static_cast<long>(std::lround(qd_controller.getBallBrakePOffsetDeg() * 100.0f)),
+                static_cast<long>(std::lround(qd_controller.getBallTerminalOffsetDeg() * 100.0f)),
+                qd_controller.isBallBrakePActive() ? 1U : 0U,
+                qd_controller.isBallTerminalPushActive() ? 1U : 0U,
+                qd_controller.isBallTerminalTrimActive() ? 1U : 0U,
+                qd_controller.isBallTerminalBrakeGateActive() ? 1U : 0U,
+                static_cast<unsigned int>(qd_controller.getBallSequenceStage()),
+                static_cast<unsigned long>(state.vision_age_ms));
 }
 
-void PrintCsvSample()
+void PrintVisionCsvSample()                             // 视觉模式打印机
 {
-    BallStateEstimate_t state = {};
-    const bool has_state = BallStateGetLatest(&state);
-    if (!has_state) {
-        state.raw_x_cm = qd_controller.getBallX();
-        state.raw_vx_cm_s = qd_controller.getBallVx();
-        state.filtered_x_cm = qd_controller.getEstimatedBallX();
-        state.x_cm = qd_controller.getEstimatedBallX();
-        state.vx_cm_s = qd_controller.getEstimatedBallVx();
-        state.valid = 0U;
-        state.vision_seq = qd_controller.getVisionSeq();
-        const uint32_t now_ms = HAL_GetTick();
-        const uint32_t last_vision_tick = qd_controller.getLastVisionTick();
-        state.vision_age_ms = (last_vision_tick == 0U) ? 9999U : (now_ms - last_vision_tick);
-    }
-    last_debug_x_cm = state.x_cm;
-    has_last_debug_x = true;
+    VisionFrame_t frame = {};
+    const bool has_frame = Communication_GetLatestVisionFrame(&frame, 0U);
 
-    PrintFixed2("", state.x_cm, ",");
-    PrintFixed2("", qd_controller.getBallTarget(), ",");
-    PrintFixed2("", state.vx_cm_s, ",");
-    PrintFixed2("", qd_controller.motor_angle * kRadToDeg, ",");
-    PrintFixed2("", qd_controller.getBallAngleCommand() * kRadToDeg, ",");
-    PrintFixed2("", qd_controller.getBallBrakePOffsetDeg(), ",");
-    PrintFixed2("", qd_controller.getBallTerminalOffsetDeg(), ",");
-    Serial_Printf("%u,%u,%u,%u,%u,%lu\r\n",
-                  qd_controller.isBallBrakePActive() ? 1U : 0U,
-                  qd_controller.isBallTerminalPushActive() ? 1U : 0U,
-                  qd_controller.isBallTerminalTrimActive() ? 1U : 0U,
-                  qd_controller.isBallTerminalBrakeGateActive() ? 1U : 0U,
-                  static_cast<unsigned int>(qd_controller.getBallSequenceStage()),
-                  static_cast<unsigned long>(state.vision_age_ms));
-}
-
-void PrintVisionCsvSample(const VisionFrame_t *frame, const bool has_frame)
-{
     BallStateEstimate_t state = {};
     const bool has_state = BallStateGetLatest(&state) != 0U;
     const uint32_t now_ms = HAL_GetTick();
-    const uint32_t rx_age_ms = has_frame ? (now_ms - frame->rx_tick_ms) : 9999U;
+    const uint32_t rx_age_ms = has_frame ? (now_ms - frame.rx_tick_ms) : 9999U;
 
-    // Fixed 5 ms diagnostic row. Positions and velocity use 0.01 cm units
-    // on the wire to keep USART6/115200 below its previous CSV bandwidth.
-    // V,stm32_ms,rx_seq,pi_time_ms,tracking_valid,rx_age_ms,
-    // packet_x_001cm,estimate_valid,estimated_x_001cm,
-    // estimated_vx_001cms,valid_vision_age_ms
+    // 固定5ms打印数据，位置和速度采用 0.01cm 为单位
+    // 以降低 USART6（115200 波特率）的 CSV 数据传输带宽占用
+    // CSV字段顺序
+    // V,STM32时间,接收帧序号,树莓派时间戳,视觉跟踪有效标志,接收帧年龄,
+    // 原始视觉位置,状态估计有效标志,估计位置,
+    // 估计速度,有效视觉数据年龄。
     Serial_Printf("V,%lu,%u,%lu,%u,%lu,%ld,%u,%ld,%ld,%lu\r\n",
                   static_cast<unsigned long>(now_ms),
-                  has_frame ? static_cast<unsigned int>(frame->seq) : 0U,
-                  has_frame ? static_cast<unsigned long>(frame->pi_time_ms) : 0UL,
-                  (has_frame && (frame->tracking_valid != 0U)) ? 1U : 0U,
+                  has_frame ? static_cast<unsigned int>(frame.seq) : 0U,
+                  has_frame ? static_cast<unsigned long>(frame.pi_time_ms) : 0UL,
+                  (has_frame && (frame.tracking_valid != 0U)) ? 1U : 0U,
                   static_cast<unsigned long>(rx_age_ms),
-                  has_frame ? static_cast<long>(frame->ball_pos_001cm) : 0L,
+                  has_frame ? static_cast<long>(frame.ball_pos_001cm) : 0L,
                   (has_state && (state.valid != 0U)) ? 1U : 0U,
                   static_cast<long>(std::lround((has_state ? state.x_cm : 0.0f) * 100.0f)),
                   static_cast<long>(std::lround((has_state ? state.vx_cm_s : 0.0f) * 100.0f)),
                   static_cast<unsigned long>(has_state ? state.vision_age_ms : 9999U));
 }
+
+void PrintSysidSample()                                 // 系统辨识模式打印机
+{
+    SystemID_t sysid = {};
+    BallStateEstimate_t state = {};
+    const bool has_state = BallStateGetLatest(&state) != 0U;
+
+    sysid.time_ms = HAL_GetTick();
+    sysid.motor_angle_deg = qd_controller.motor_angle * kRadToDeg;
+    sysid.estimated_x_cm = state.x_cm;
+    sysid.estimated_v_cm_s = state.vx_cm_s;
+
+    sysid.sysid_state_valid = (has_state && state.valid != 0U) ? 1U : 0U;
+
+    Serial_Printf("S,%lu,%ld,%ld,%ld,%u\r\n",
+              static_cast<unsigned long>(sysid.time_ms),
+              static_cast<long>(std::lround(sysid.motor_angle_deg * 100.0f)),
+              static_cast<long>(std::lround(sysid.estimated_x_cm * 100.0f)),
+              static_cast<long>(std::lround(sysid.estimated_v_cm_s * 100.0f)),
+              static_cast<unsigned int>(sysid.sysid_state_valid));
+
+}
+
 
 void PostCommand(DebugCommandId_t id,
                  float arg1 = 0.0f,
@@ -167,348 +141,215 @@ void PostCommand(DebugCommandId_t id,
     }
 
     DebugCommand_t command = {id, arg1, arg2, arg3, arg4};
-    if (osMessageQueuePut(DebugCommandHandle, &command, 0U, 20U) != osOK) {
+    if ((osMessageQueuePut(DebugCommandHandle, &command, 0U, 0U) != osOK) &&
+        (csv_mode == CsvMode::Off)) {
         Serial_Printf("debug command queue full\r\n");
     }
 }
 
-void ExecuteLine(char *line)
+struct CommandSpec {
+    const char *group;
+    const char *action;
+    uint8_t argument_count;
+    DebugCommandId_t id;
+    bool degrees_to_radians;
+};
+
+// Only commands with an active control/estimator consumer belong here.
+// Task, CSV and zero-point commands are handled separately below.
+constexpr CommandSpec kCommandSpecs[] = {                         // 调试命令表{命令组、命令名称、参数数量、命令ID、是否角度转弧度}
+    {"motor", "enable", 0U, DEBUG_CMD_ENABLE, false},
+    {"motor", "disable", 0U, DEBUG_CMD_DISABLE, false},
+    {"motor", "start", 0U, DEBUG_CMD_START, false},
+    {"motor", "stop", 0U, DEBUG_CMD_STOP, false},
+    {"motor", "pid-speed", 3U, DEBUG_CMD_SET_SPEED_PID, false},
+    {"motor", "pid-angle", 3U, DEBUG_CMD_SET_ANGLE_PID, false},
+    {"motor", "target-current", 1U, DEBUG_CMD_SET_CURRENT, false},
+    {"motor", "target-speed", 1U, DEBUG_CMD_SET_SPEED, false},
+    {"motor", "target-angle", 1U, DEBUG_CMD_SET_ANGLE, true},
+    {"motor", "target-step", 1U, DEBUG_CMD_SET_STEP_ANGLE, true},
+    {"motor", "limit-current", 1U, DEBUG_CMD_SET_CURRENT_LIMIT, false},
+    {"motor", "limit-angle", 2U, DEBUG_CMD_SET_ANGLE_LIMIT, true},
+    {"motor", "limit-angle-off", 0U, DEBUG_CMD_DISABLE_ANGLE_LIMIT, false},
+    {"motor", "limit-rate", 1U, DEBUG_CMD_SET_ANGLE_RATE_LIMIT, true},
+    {"motor", "deadband-angle", 1U, DEBUG_CMD_SET_ANGLE_CMD_DEADBAND, false},
+    {"ball", "enable", 0U, DEBUG_CMD_BALL_ENABLE, false},
+    {"ball", "disable", 0U, DEBUG_CMD_BALL_DISABLE, false},
+    {"ball", "pid-position", 3U, DEBUG_CMD_BALL_SET_POSITION_PID, false},
+    {"ball", "pid-velocity", 3U, DEBUG_CMD_BALL_SET_VELOCITY_PID, false},
+    {"ball", "target-position", 1U, DEBUG_CMD_BALL_SET_TARGET, false},
+    {"ball", "target-speed", 1U, DEBUG_CMD_BALL_SET_TARGET_SPEED, false},
+    {"ball", "balance-angle", 1U, DEBUG_CMD_BALL_SET_BALANCE_ANGLE, true},
+    {"ball", "limit-angle", 1U, DEBUG_CMD_BALL_SET_ANGLE_LIMIT, false},
+    {"ball", "limit-speed", 1U, DEBUG_CMD_BALL_SET_SPEED_LIMIT, false},
+    {"ball", "feedforward", 2U, DEBUG_CMD_BALL_SET_FEEDFORWARD_SPLIT, false},
+    {"ball", "rate", 1U, DEBUG_CMD_BALL_SET_RATE, false},
+    {"ball", "deadband-position", 1U, DEBUG_CMD_BALL_SET_POSITION_DEADBAND, false},
+    {"vision", "ab", 2U, DEBUG_CMD_VISION_SET_AB, false},
+    {"vision", "deadband", 1U, DEBUG_CMD_VISION_SET_MEASUREMENT_DEADBAND, false},
+    {"vision", "limit", 2U, DEBUG_CMD_VISION_SET_LIMITS, false},
+    {"vision", "predict", 2U, DEBUG_CMD_VISION_SET_ACTIVE_PREDICTION, false},
+};
+
+const CommandSpec *FindCommand(const char *group, const char *action)
 {
-    char *cmd = std::strtok(line, " \t");
-
-    if (cmd == nullptr) {
-        return;
+    if (group == nullptr || action == nullptr) {
+        return nullptr;
     }
+    for (const auto& spec : kCommandSpecs) {
+        if (std::strcmp(group, spec.group) == 0 &&
+            std::strcmp(action, spec.action) == 0) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
 
-    if ((std::strcmp(cmd, "enable") == 0) || (std::strcmp(cmd, "en") == 0)) {
-        PostCommand(DEBUG_CMD_ENABLE);
-    } else if ((std::strcmp(cmd, "disable") == 0) || (std::strcmp(cmd, "dis") == 0)) {
-        debug_current = 0.0f;
-        PostCommand(DEBUG_CMD_DISABLE);
-    } else if (std::strcmp(cmd, "start") == 0) {
-        PostCommand(DEBUG_CMD_START);
-    } else if (std::strcmp(cmd, "stop") == 0) {
-        debug_current = 0.0f;
-        PostCommand(DEBUG_CMD_STOP);
-    } else if ((std::strcmp(cmd, "current") == 0) || (std::strcmp(cmd, "cur") == 0)) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            debug_current = value;
-            PostCommand(DEBUG_CMD_SET_CURRENT, debug_current);
-        }
-    } else if (std::strcmp(cmd, "+") == 0) {
-        debug_current += current_step;
-        PostCommand(DEBUG_CMD_SET_CURRENT, debug_current);
-    } else if (std::strcmp(cmd, "-") == 0) {
-        debug_current -= current_step;
-        PostCommand(DEBUG_CMD_SET_CURRENT, debug_current);
-    } else if ((std::strcmp(cmd, "zero") == 0) || (std::strcmp(cmd, "0") == 0)) {
-        debug_current = 0.0f;
-        PostCommand(DEBUG_CMD_SET_CURRENT, 0.0f);
-    } else if (std::strcmp(cmd, "speed") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_SPEED, value);
-        }
-    } else if (std::strcmp(cmd, "angle") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_ANGLE, value * kDegToRad);
-        }
-    } else if (std::strcmp(cmd, "step") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_STEP_ANGLE, value * kDegToRad);
-        }
-    } else if (std::strcmp(cmd, "lowspeed") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_LOW_SPEED, value);
-        }
-    } else if (std::strcmp(cmd, "spid") == 0) {
-        float kp = 0.0f;
-        float ki = 0.0f;
-        float kd = 0.0f;
-        if (ParseThreeFloats(&kp, &ki, &kd)) {
-            PostCommand(DEBUG_CMD_SET_SPEED_PID, kp, ki, kd);
-        }
-    } else if (std::strcmp(cmd, "apid") == 0) {
-        float kp = 0.0f;
-        float ki = 0.0f;
-        float kd = 0.0f;
-        if (ParseThreeFloats(&kp, &ki, &kd)) {
-            PostCommand(DEBUG_CMD_SET_ANGLE_PID, kp, ki, kd);
-        }
-    } else if (std::strcmp(cmd, "ilimit") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_CURRENT_LIMIT, value);
-        }
-    } else if (std::strcmp(cmd, "alimit") == 0) {
-        char *token = NextToken();
-        if ((token != nullptr) && (std::strcmp(token, "off") == 0)) {
-            PostCommand(DEBUG_CMD_DISABLE_ANGLE_LIMIT);
-        } else {
-            float min_angle = 0.0f;
-            float max_angle = 0.0f;
-            if (ParseFloat(token, &min_angle) && ParseFloat(NextToken(), &max_angle)) {
-                PostCommand(DEBUG_CMD_SET_ANGLE_LIMIT, min_angle * kDegToRad, max_angle * kDegToRad);
-            }
-        }
-    } else if (std::strcmp(cmd, "arate") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_ANGLE_RATE_LIMIT, value * kDegToRad);
-        }
-    } else if (std::strcmp(cmd, "adead") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_SET_ANGLE_CMD_DEADBAND, value);
-        }
-    } else if (std::strcmp(cmd, "ball") == 0) {
-        char *token = NextToken();
-        if ((token != nullptr) && (std::strcmp(token, "on") == 0)) {
-            PostCommand(DEBUG_CMD_BALL_ENABLE);
-        } else if ((token != nullptr) && (std::strcmp(token, "off") == 0)) {
-            PostCommand(DEBUG_CMD_BALL_DISABLE);
-        }
-    } else if (std::strcmp(cmd, "bt") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_BALL_SET_TARGET, value);
-        }
-    } else if (std::strcmp(cmd, "bseq") == 0) {
-        float first = 0.0f;
-        float second = 0.0f;
-        float turn_window = 0.5f;
-        float turn_v = 0.6f;
-        if (ParseFloat(NextToken(), &first) && ParseFloat(NextToken(), &second)) {
-            char *third = NextToken();
-            if (third != nullptr) {
-                ParseFloat(third, &turn_window);
-                char *fourth = NextToken();
-                if (fourth != nullptr) {
-                    ParseFloat(fourth, &turn_v);
-                }
-            }
-            PostCommand(DEBUG_CMD_BALL_START_SEQUENCE, first, second, turn_window, turn_v);
-        }
-    } else if (std::strcmp(cmd, "task") == 0) {
-        char *task = NextToken();
-        if ((task != nullptr) && (std::strcmp(task, "init") == 0)) {
-            PostCommand(DEBUG_CMD_BALL_INITIALIZE_TASK);
-        } else if ((task != nullptr) && (std::strcmp(task, "1") == 0)) {
-            PostCommand(DEBUG_CMD_BALL_START_TASK, 1.0f);
-        } else if ((task != nullptr) &&
-                   ((std::strcmp(task, "stop") == 0) || (std::strcmp(task, "0") == 0))) {
-            PostCommand(DEBUG_CMD_BALL_STOP_TASK);
-        } else if ((task != nullptr) && (std::strcmp(task, "status") == 0)) {
-            Serial_Printf("task=%u active=%u stage=%u\r\n",
-                          static_cast<unsigned int>(qd_controller.getActiveTask()),
-                          qd_controller.isTaskActive() ? 1U : 0U,
-                          static_cast<unsigned int>(qd_controller.getBallSequenceStage()));
-        }
-    } else if (std::strcmp(cmd, "task1") == 0) {
-        PostCommand(DEBUG_CMD_BALL_START_TASK, 1.0f);
-    } else if (std::strcmp(cmd, "ba") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_BALL_SET_BALANCE_ANGLE, value * kDegToRad);
-        }
-    } else if (std::strcmp(cmd, "bgain") == 0) {
-        float kp = 0.0f;
-        float ki = 0.0f;
-        float kd = 0.0f;
-        if (ParseFloat(NextToken(), &kp) && ParseFloat(NextToken(), &ki)) {
-            char *third = NextToken();
-            if (third != nullptr) {
-                if (ParseFloat(third, &kd)) {
-                    PostCommand(DEBUG_CMD_BALL_SET_GAINS, kp, ki, kd);
-                }
-            } else {
-                PostCommand(DEBUG_CMD_BALL_SET_GAINS, kp, 0.0f, ki);
-            }
-        }
-    } else if (std::strcmp(cmd, "bff") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_BALL_SET_FEEDFORWARD, value);
-        }
-    } else if (std::strcmp(cmd, "bff2") == 0) {
-        float pos_value = 0.0f;
-        float neg_value = 0.0f;
-        if (ParseFloat(NextToken(), &pos_value) && ParseFloat(NextToken(), &neg_value)) {
-            PostCommand(DEBUG_CMD_BALL_SET_FEEDFORWARD_SPLIT, pos_value, neg_value);
-        }
-    } else if (std::strcmp(cmd, "bw") == 0) {
-        float far_error = 0.0f;
-        float near_error = 0.0f;
-        float min_weight = 0.0f;
-        if (ParseThreeFloats(&far_error, &near_error, &min_weight)) {
-            PostCommand(DEBUG_CMD_BALL_SET_VISION_WEIGHT, far_error, near_error, min_weight);
-        }
-    } else if (std::strcmp(cmd, "bdw") == 0) {
-        float far_error = 0.0f;
-        float near_error = 0.0f;
-        float min_weight = 0.0f;
-        if (ParseThreeFloats(&far_error, &near_error, &min_weight)) {
-            PostCommand(DEBUG_CMD_BALL_SET_D_WEIGHT, far_error, near_error, min_weight);
-        }
-    } else if (std::strcmp(cmd, "bbp") == 0) {
-        float kp = 0.0f;
-        float margin = 0.0f;
-        float max_angle = 0.0f;
-        float dist = 0.0f;
-        if (ParseFourFloats(&kp, &margin, &max_angle, &dist)) {
-            PostCommand(DEBUG_CMD_BALL_SET_BRAKE_P, kp, margin, max_angle, dist);
-        }
-    } else if (std::strcmp(cmd, "bbpd") == 0) {
-        float kp = 0.0f;
-        float margin = 0.0f;
-        float max_angle = 0.0f;
-        float dist = 0.0f;
-        if (ParseFourFloats(&kp, &margin, &max_angle, &dist)) {
-            PostCommand(DEBUG_CMD_BALL_SET_BRAKE_P_LONG, kp, margin, max_angle, dist);
-        }
-    } else if (std::strcmp(cmd, "bbpv") == 0) {
-        float kp = 0.0f;
-        float target_v = 0.0f;
-        float max_angle = 0.0f;
-        if (ParseThreeFloats(&kp, &target_v, &max_angle)) {
-            PostCommand(DEBUG_CMD_BALL_SET_BRAKE_P_SPEED, kp, target_v, max_angle);
-        }
-    } else if (std::strcmp(cmd, "bbpn") == 0) {
-        float max_angle = 0.0f;
-        if (ParseFloat(NextToken(), &max_angle)) {
-            PostCommand(DEBUG_CMD_BALL_SET_BRAKE_P_NEGATIVE_MAX, max_angle);
-        }
-    } else if (std::strcmp(cmd, "bterm") == 0) {
-        float x_window = 0.0f;
-        float vx_window = 0.0f;
-        if (ParseFloat(NextToken(), &x_window) && ParseFloat(NextToken(), &vx_window)) {
-            PostCommand(DEBUG_CMD_BALL_SET_TERMINAL_BRAKE_GATE, x_window, vx_window);
-        }
-    } else if (std::strcmp(cmd, "bpush") == 0) {
-        float window = 0.0f;
-        float vx_window = 0.0f;
-        float push_angle = 0.0f;
-        float unused_max_angle = 0.0f;
-        if (ParseThreeOrFourFloats(&window, &vx_window, &push_angle, &unused_max_angle)) {
-            PostCommand(DEBUG_CMD_BALL_SET_TERMINAL_PUSH, window, vx_window, push_angle, unused_max_angle);
-        }
-    } else if ((std::strcmp(cmd, "bpushp") == 0) || (std::strcmp(cmd, "bpushpos") == 0)) {
-        float window = 0.0f;
-        float vx_window = 0.0f;
-        float push_angle = 0.0f;
-        float unused_max_angle = 0.0f;
-        if (ParseThreeOrFourFloats(&window, &vx_window, &push_angle, &unused_max_angle)) {
-            PostCommand(DEBUG_CMD_BALL_SET_TERMINAL_PUSH_POSITIVE, window, vx_window, push_angle, unused_max_angle);
-        }
-    } else if ((std::strcmp(cmd, "bpushm") == 0) || (std::strcmp(cmd, "bpushneg") == 0)) {
-        float window = 0.0f;
-        float vx_window = 0.0f;
-        float push_angle = 0.0f;
-        float unused_max_angle = 0.0f;
-        if (ParseThreeOrFourFloats(&window, &vx_window, &push_angle, &unused_max_angle)) {
-            PostCommand(DEBUG_CMD_BALL_SET_TERMINAL_PUSH_NEGATIVE, window, vx_window, push_angle, unused_max_angle);
-        }
-    } else if (std::strcmp(cmd, "blimit") == 0) {
-        float value = 0.0f;
-        if (ParseFloat(NextToken(), &value)) {
-            PostCommand(DEBUG_CMD_BALL_SET_ANGLE_LIMIT, value);
-        }
-    } else if (std::strcmp(cmd, "bdead") == 0) {
-        float x = 0.0f;
-        float vx = 0.0f;
-        if (ParseFloat(NextToken(), &x) && ParseFloat(NextToken(), &vx)) {
-            PostCommand(DEBUG_CMD_BALL_SET_DEADBAND, x, vx);
-        }
-    } else if (std::strcmp(cmd, "brate") == 0) {
-        float period_ms = 0.0f;
-        if (ParseFloat(NextToken(), &period_ms)) {
-            PostCommand(DEBUG_CMD_BALL_SET_RATE, period_ms);
-        }
-    } else if (std::strcmp(cmd, "vf") == 0) {
-        float x_alpha = 0.0f;
-        float vx_alpha = 0.0f;
-        float dx_deadband = 0.0f;
-        if (ParseThreeFloats(&x_alpha, &vx_alpha, &dx_deadband)) {
-            PostCommand(DEBUG_CMD_VISION_SET_FILTER, x_alpha, vx_alpha, dx_deadband);
-        }
-    } else if (std::strcmp(cmd, "vdead") == 0) {
-        float deadband = 0.0f;
-        float unused1 = 0.0f;
-        float unused2 = 0.0f;
-        if (ParseThreeFloats(&deadband, &unused1, &unused2)) {
-            PostCommand(DEBUG_CMD_VISION_SET_MEASUREMENT_DEADBAND, deadband);
-        }
-    } else if (std::strcmp(cmd, "vf2") == 0) {
-        float max_velocity = 0.0f;
-        float interp_ms = 0.0f;
-        float max_x_step = 0.0f;
-        if (ParseThreeFloats(&max_velocity, &interp_ms, &max_x_step)) {
-            PostCommand(DEBUG_CMD_VISION_SET_FILTER_LIMITS,
-                        max_velocity,
-                        interp_ms,
-                        max_x_step);
-        }
-    } else if (std::strcmp(cmd, "vv") == 0) {
-        float window_points = 0.0f;
-        float min_dx_cm = 0.0f;
-        float reverse_limit = 0.0f;
-        if (ParseThreeFloats(&window_points, &min_dx_cm, &reverse_limit)) {
-            PostCommand(DEBUG_CMD_VISION_SET_VELOCITY,
-                        window_points,
-                        min_dx_cm,
-                        reverse_limit);
-        }
-    } else if (std::strcmp(cmd, "vp") == 0) {
-        float sample_ms = 0.0f;
-        float predict_ms = 0.0f;
-        float predict_step = 0.0f;
-        if (ParseThreeFloats(&sample_ms, &predict_ms, &predict_step)) {
-            PostCommand(DEBUG_CMD_VISION_SET_PREDICTION,
-                        sample_ms,
-                        predict_ms,
-                        predict_step);
-        }
-    } else if ((std::strcmp(cmd, "vablim") == 0) || (std::strcmp(cmd, "vclim") == 0)) {
-        float max_step = 0.0f;
-        if (ParseFloat(NextToken(), &max_step)) {
-            PostCommand(DEBUG_CMD_VISION_SET_AB_CORRECTION_LIMIT, max_step);
-        }
-    } else if (std::strcmp(cmd, "csv") == 0) {
-        char *mode = NextToken();
-        if ((mode != nullptr) && (std::strcmp(mode, "vision") == 0)) {
-            csv_mode = CsvMode::Vision;
-            last_csv_ms = 0U;
-            Serial_Printf("csv=vision\r\n");
-        } else if ((mode != nullptr) && (std::strcmp(mode, "control") == 0)) {
-            csv_mode = CsvMode::Control;
-            last_csv_ms = 0U;
-            Serial_Printf("csv=control\r\n");
-        } else if ((mode != nullptr) && (std::strcmp(mode, "off") == 0)) {
-            csv_mode = CsvMode::Off;
-            Serial_Printf("csv=off\r\n");
-        }
-    } else if ((std::strcmp(cmd, "set_zeropoint") == 0) ||
-               (std::strcmp(cmd, "zeropoint") == 0) ||
-               (std::strcmp(cmd, "setzero") == 0)) {
-        PostCommand(DEBUG_CMD_SET_ZERO_POINT);
-    } else if ((std::strcmp(cmd, "clear_zeropoint") == 0) ||
-               (std::strcmp(cmd, "zerooff") == 0)) {
-        PostCommand(DEBUG_CMD_CLEAR_ZERO_POINT);
+
+bool ValidCommandArguments(const DebugCommandId_t id, const float *a)   // 对参数进行限制
+{
+    switch (id) {
+
+    // 目标速度限制：1~5 cm/s（允许正负方向）
+    case DEBUG_CMD_BALL_SET_TARGET_SPEED:
+        return std::fabs(a[0]) >= 1.0f &&
+               std::fabs(a[0]) <= 5.0f;
+
+    // 小球目标位置限制：±10 cm
+    case DEBUG_CMD_BALL_SET_TARGET:
+        return std::fabs(a[0]) <= 10.0f;
+
+    // 死区参数不得为负数
+    case DEBUG_CMD_BALL_SET_POSITION_DEADBAND:
+    case DEBUG_CMD_VISION_SET_MEASUREMENT_DEADBAND:
+        return a[0] >= 0.0f;
+
+    // 小球速度上限：0~12 cm/s（不允许为0）
+    case DEBUG_CMD_BALL_SET_SPEED_LIMIT:
+        return a[0] > 0.0f && a[0] <= 12.0f;
+
+    // 视觉滤波系数限制：0~1
+    case DEBUG_CMD_VISION_SET_AB:
+        return a[0] >= 0.0f && a[0] <= 1.0f &&
+               a[1] >= 0.0f && a[1] <= 1.0f;
+
+    // 视觉限制参数必须大于0
+    case DEBUG_CMD_VISION_SET_LIMITS:
+        return a[0] > 0.0f && a[1] > 0.0f;
+
+    // 视觉预测时间：0~80 ms，第二个参数非负
+    case DEBUG_CMD_VISION_SET_ACTIVE_PREDICTION:
+        return a[0] >= 0.0f && a[0] <= 80.0f &&
+               a[1] >= 0.0f;
+
+    // 其他命令（包括PID参数）不在此限制范围
+    default:
+        return true;
     }
 }
 
-void PushChar(uint8_t ch)
+
+void ExecuteLine(char *line)                              // 串口命令解析器
+{
+    const char *group = std::strtok(line, " \t");
+    const char *action = NextToken();
+    if (group == nullptr) {
+        return;
+    }
+
+    if (std::strcmp(group, "csv") == 0) {                 // CSV打印模式解析
+        if (action != nullptr && NextToken() == nullptr) {
+            if (std::strcmp(action, "vision") == 0) csv_mode = CsvMode::Vision;
+            else if (std::strcmp(action, "control") == 0) csv_mode = CsvMode::Control;
+            else if (std::strcmp(action, "sysid") == 0) csv_mode = CsvMode::Sysid;
+            else if (std::strcmp(action, "off") == 0) csv_mode = CsvMode::Off;
+            else {
+                if (csv_mode == CsvMode::Off) Serial_Printf("unknown csv mode\r\n");
+                return;
+            }
+            last_csv_ms = 0U;
+            if (csv_mode == CsvMode::Off) Serial_Printf("csv=%s\r\n", action);
+        } else {
+            if (csv_mode == CsvMode::Off) Serial_Printf("usage: csv vision|control|sysid|off\r\n");
+        }
+        return;
+    }
+
+    if (std::strcmp(group, "task") == 0) {                // 任务控制命令解析
+        if (action == nullptr || NextToken() != nullptr) {
+            if (csv_mode == CsvMode::Off) Serial_Printf("usage: task init|1|stop|status\r\n");
+        } else if (std::strcmp(action, "init") == 0) {
+            PostCommand(DEBUG_CMD_BALL_INITIALIZE_TASK);
+        } else if (std::strcmp(action, "1") == 0) {
+            PostCommand(DEBUG_CMD_BALL_START_TASK, 1.0f);
+        } else if (std::strcmp(action, "stop") == 0) {
+            PostCommand(DEBUG_CMD_BALL_STOP_TASK);
+        } else if (std::strcmp(action, "status") == 0) {
+            if (csv_mode == CsvMode::Off) {
+                Serial_Printf("task=%u active=%u stage=%u\r\n",
+                    static_cast<unsigned int>(qd_controller.getActiveTask()),
+                    qd_controller.isTaskActive() ? 1U : 0U,
+                    static_cast<unsigned int>(qd_controller.getBallSequenceStage()));
+            }
+        } else {
+            if (csv_mode == CsvMode::Off) Serial_Printf("unknown task command\r\n");
+        }
+        return;
+    }
+
+    if (std::strcmp(group, "zero") == 0) {                // 零点设置命令解析
+        if (action == nullptr || NextToken() != nullptr) {
+            if (csv_mode == CsvMode::Off) Serial_Printf("usage: zero set|clear\r\n");
+        } else if (std::strcmp(action, "set") == 0) {
+            PostCommand(DEBUG_CMD_SET_ZERO_POINT);
+        } else if (std::strcmp(action, "clear") == 0) {
+            PostCommand(DEBUG_CMD_CLEAR_ZERO_POINT);
+        } else {
+            if (csv_mode == CsvMode::Off) Serial_Printf("usage: zero set|clear\r\n");
+        }
+        return;
+    }
+
+    const CommandSpec *spec = FindCommand(group, action);
+    if (spec == nullptr) {
+        if (csv_mode == CsvMode::Off) Serial_Printf("unknown command\r\n");
+        return;
+    }
+    float args[4] = {};
+    for (uint8_t i = 0U; i < spec->argument_count; ++i) {
+        if (!ParseFloat(NextToken(), &args[i]) || !std::isfinite(args[i])) {
+            if (csv_mode == CsvMode::Off) Serial_Printf("invalid argument\r\n");
+            return;
+        }
+    }
+    if (NextToken() != nullptr) {
+        if (csv_mode == CsvMode::Off) Serial_Printf("too many arguments\r\n");
+        return;
+    }
+    if (!ValidCommandArguments(spec->id, args)) {
+        if (csv_mode == CsvMode::Off) Serial_Printf("argument out of range\r\n");
+        return;
+    }
+    if (spec->degrees_to_radians) {
+        args[0] *= kDegToRad;
+        if (spec->argument_count == 2U) args[1] *= kDegToRad;
+    }
+    PostCommand(spec->id, args[0], args[1], args[2], args[3]);
+}
+
+void PushChar(uint8_t ch)                           // 拼接缓冲区的字符形成字符串，遇到回车或换行符时，执行ExecuteLine函数
 {
     if ((ch == '\r') || (ch == '\n')) {
-        if (line_length > 0U) {
+        if (!discard_line && line_length > 0U) {
             line_buffer[line_length] = '\0';
             ExecuteLine(line_buffer);
-            line_length = 0U;
         }
+        line_length = 0U;
+        discard_line = false;
+        return;
+    }
+
+    if (discard_line) {
         return;
     }
 
@@ -523,12 +364,14 @@ void PushChar(uint8_t ch)
         line_buffer[line_length++] = static_cast<char>(ch);
     } else {
         line_length = 0U;
+        discard_line = true;
+        if (csv_mode == CsvMode::Off) Serial_Printf("command too long\r\n");
     }
 }
 
 } // namespace
 
-extern "C" void DebugTask(void *argument)
+extern "C" void DebugTask(void *argument)                       // 调试任务函数
 {
     (void)argument;
 
@@ -537,24 +380,28 @@ extern "C" void DebugTask(void *argument)
     for (;;) {
         uint8_t ch = 0U;
 
-        while (Serial_GetRxByte(&ch)) {
+        for (;;) {                                             // 读取现有字节，由PushChar按换行组装命令
+            if (Serial_GetRxOverflow()) {
+                Serial_DiscardRxBuffer();
+                line_length = 0U;
+                discard_line = true;
+                if (csv_mode == CsvMode::Off) Serial_Printf("serial rx overflow; line discarded\r\n");
+            }
+            if (!Serial_GetRxByte(&ch)) {
+                break;
+            }
             PushChar(ch);
         }
 
-        if (Serial_GetRxOverflow()) {
-            Serial_ClearRxOverflow();
-        }
-
         const uint32_t now_ms = HAL_GetTick();
-        if ((csv_mode == CsvMode::Control) &&
-            ((now_ms - last_csv_ms) >= kControlCsvPeriodMs)) {
-            PrintCsvSample();
-            last_csv_ms = now_ms;
-        } else if ((csv_mode == CsvMode::Vision) &&
-                   ((now_ms - last_csv_ms) >= kControlCsvPeriodMs)) {
-            VisionFrame_t frame = {};
-            const bool has_frame = Communication_GetLatestVisionFrame(&frame, 0U);
-            PrintVisionCsvSample(has_frame ? &frame : nullptr, has_frame);
+        if ((csv_mode != CsvMode::Off) &&
+            ((now_ms - last_csv_ms) >= kCsvPeriodMs)) {
+            switch (csv_mode) {
+            case CsvMode::Control: PrintCsvSample(); break;
+            case CsvMode::Vision: PrintVisionCsvSample(); break;
+            case CsvMode::Sysid: PrintSysidSample(); break;
+            case CsvMode::Off: break;
+            }
             last_csv_ms = now_ms;
         }
 

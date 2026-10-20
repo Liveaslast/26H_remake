@@ -1,11 +1,13 @@
 #include "cmsis_os.h"
 #include "can.h"
 #include "DebugCommand.h"
+#include "CommunicationTask.h"
 #include "QD4310.h"
 #include "BallBeamController.h"
 #include "BallStateEstimate.h"
 #include "BuildMode.h"
 #include "Motortest.h"
+#include "PiControl.h"
 
 constexpr uint8_t kMotorId = 0x00;
 constexpr uint32_t kMotorFeedbackStdId = 0x500U + kMotorId;
@@ -95,6 +97,14 @@ void EnsureMotorReady()
     qd_controller.start();
 }
 
+void SetBalanceAngleCommand(const float angle_rad)
+{
+    EnsureMotorReady();
+    qd_controller.disableBalance();
+    qd_controller.setBalanceAngle(angle_rad);
+    qd_controller.Ctrl(BallBeamController::CtrlType::AngleCtrl, qd_controller.getBalanceAngle());
+}
+
 void ExecuteDebugCommand(const DebugCommand_t& command)
 {
     switch (command.id) {
@@ -131,11 +141,6 @@ void ExecuteDebugCommand(const DebugCommand_t& command)
         qd_controller.disableBalance();
         qd_controller.Ctrl(BallBeamController::CtrlType::StepAngleCtrl, command.arg1);
         break;
-    case DEBUG_CMD_SET_LOW_SPEED:
-        EnsureMotorReady();
-        qd_controller.disableBalance();
-        qd_controller.Ctrl(BallBeamController::CtrlType::LowSpeedCtrl, command.arg1);
-        break;
     case DEBUG_CMD_SET_SPEED_PID:
         qd_controller.setSpeedPID(command.arg1, command.arg2, command.arg3);
         break;
@@ -159,7 +164,7 @@ void ExecuteDebugCommand(const DebugCommand_t& command)
         break;
     case DEBUG_CMD_BALL_ENABLE:
         EnsureMotorReady();
-        qd_controller.enableBalance();
+        qd_controller.startPositionTarget(qd_controller.getBallTarget());
         break;
     case DEBUG_CMD_BALL_DISABLE:
         EnsureMotorReady();
@@ -168,17 +173,11 @@ void ExecuteDebugCommand(const DebugCommand_t& command)
         break;
     case DEBUG_CMD_BALL_SET_TARGET:
         EnsureMotorReady();
-        qd_controller.setBallTarget(command.arg1);
-        qd_controller.enableBalance();
-        break;
-    case DEBUG_CMD_BALL_START_SEQUENCE:
-        EnsureMotorReady();
-        qd_controller.startBallSequence(command.arg1, command.arg2, command.arg3, command.arg4);
-        qd_controller.enableBalance();
+        qd_controller.startPositionTarget(command.arg1);
         break;
     case DEBUG_CMD_BALL_START_TASK:
         EnsureMotorReady();
-        qd_controller.startTask(static_cast<BallBeamController::TaskId>(
+        (void)qd_controller.startTask(static_cast<BallBeamController::TaskId>(
             static_cast<uint8_t>(command.arg1)));
         break;
     case DEBUG_CMD_BALL_INITIALIZE_TASK:
@@ -189,76 +188,50 @@ void ExecuteDebugCommand(const DebugCommand_t& command)
         qd_controller.stopTask();
         break;
     case DEBUG_CMD_BALL_SET_BALANCE_ANGLE:
-        EnsureMotorReady();
-        qd_controller.disableBalance();
-        qd_controller.setBalanceAngle(command.arg1);
-        qd_controller.Ctrl(BallBeamController::CtrlType::AngleCtrl, qd_controller.getBalanceAngle());
-        break;
-    case DEBUG_CMD_BALL_SET_GAINS:
-        qd_controller.setBallGains(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_BALL_SET_FEEDFORWARD:
-        qd_controller.setBallFeedforward(command.arg1);
+        SetBalanceAngleCommand(command.arg1);
         break;
     case DEBUG_CMD_BALL_SET_FEEDFORWARD_SPLIT:
         qd_controller.setBallFeedforwardSplit(command.arg1, command.arg2);
         break;
-    case DEBUG_CMD_BALL_SET_VISION_WEIGHT:
-        qd_controller.setBallVisionWeight(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_BALL_SET_D_WEIGHT:
-        qd_controller.setBallDWeight(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_BALL_SET_BRAKE_P:
-        qd_controller.setBallBrakePShortProfile(command.arg1, command.arg2, command.arg3, command.arg4);
-        break;
-    case DEBUG_CMD_BALL_SET_BRAKE_P_LONG:
-        qd_controller.setBallBrakePLongProfile(command.arg1, command.arg2, command.arg3, command.arg4);
-        break;
-    case DEBUG_CMD_BALL_SET_BRAKE_P_SPEED:
-        qd_controller.setBallBrakePSpeed(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_BALL_SET_BRAKE_P_NEGATIVE_MAX:
-        qd_controller.setBallBrakePNegativeMax(command.arg1);
-        break;
-    case DEBUG_CMD_BALL_SET_TERMINAL_BRAKE_GATE:
-        qd_controller.setBallTerminalBrakeGate(command.arg1, command.arg2);
-        break;
-    case DEBUG_CMD_BALL_SET_TERMINAL_PUSH:
-        qd_controller.setBallTerminalPush(command.arg1, command.arg2, command.arg3, command.arg4);
-        break;
-    case DEBUG_CMD_BALL_SET_TERMINAL_PUSH_POSITIVE:
-        qd_controller.setBallTerminalPushPositive(command.arg1, command.arg2, command.arg3, command.arg4);
-        break;
-    case DEBUG_CMD_BALL_SET_TERMINAL_PUSH_NEGATIVE:
-        qd_controller.setBallTerminalPushNegative(command.arg1, command.arg2, command.arg3, command.arg4);
-        break;
     case DEBUG_CMD_BALL_SET_ANGLE_LIMIT:
         qd_controller.setBallAngleLimit(command.arg1);
-        break;
-    case DEBUG_CMD_BALL_SET_DEADBAND:
-        qd_controller.setBallDeadband(command.arg1, command.arg2);
         break;
     case DEBUG_CMD_BALL_SET_RATE:
         qd_controller.setBallOuterLoopPeriod(command.arg1);
         break;
-    case DEBUG_CMD_VISION_SET_FILTER:
-        qd_controller.setVisionFilter(command.arg1, command.arg2, command.arg3);
+    case DEBUG_CMD_BALL_SET_VELOCITY_TEST_CONFIG:
+        if (!qd_controller.isTaskActive()) {
+            qd_controller.setVelocityTestConfig(command.arg1, command.arg2,
+                                                command.arg3, command.arg4);
+        }
+        break;
+    case DEBUG_CMD_BALL_SET_POSITION_PID:
+        qd_controller.setBallPositionPid(command.arg1, command.arg2, command.arg3);
+        break;
+    case DEBUG_CMD_BALL_SET_VELOCITY_PID:
+        qd_controller.setBallVelocityPid(command.arg1, command.arg2, command.arg3);
+        break;
+    case DEBUG_CMD_BALL_SET_TARGET_SPEED:
+        EnsureMotorReady();
+        (void)qd_controller.startVelocityTarget(command.arg1);
+        break;
+    case DEBUG_CMD_BALL_SET_POSITION_DEADBAND:
+        qd_controller.setBallPositionDeadband(command.arg1);
+        break;
+    case DEBUG_CMD_BALL_SET_SPEED_LIMIT:
+        qd_controller.setBallSpeedLimit(command.arg1);
+        break;
+    case DEBUG_CMD_VISION_SET_AB:
+        qd_controller.setVisionAb(command.arg1, command.arg2);
+        break;
+    case DEBUG_CMD_VISION_SET_LIMITS:
+        qd_controller.setVisionActiveLimits(command.arg1, command.arg2);
+        break;
+    case DEBUG_CMD_VISION_SET_ACTIVE_PREDICTION:
+        qd_controller.setVisionActivePrediction(command.arg1, command.arg2);
         break;
     case DEBUG_CMD_VISION_SET_MEASUREMENT_DEADBAND:
         qd_controller.setVisionMeasurementDeadband(command.arg1);
-        break;
-    case DEBUG_CMD_VISION_SET_FILTER_LIMITS:
-        qd_controller.setVisionFilterLimits(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_VISION_SET_VELOCITY:
-        qd_controller.setVisionVelocity(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_VISION_SET_PREDICTION:
-        qd_controller.setVisionPrediction(command.arg1, command.arg2, command.arg3);
-        break;
-    case DEBUG_CMD_VISION_SET_AB_CORRECTION_LIMIT:
-        qd_controller.setVisionAbCorrectionLimit(command.arg1);
         break;
     case DEBUG_CMD_SET_ZERO_POINT:
         qd_controller.setZeroPoint();
@@ -267,6 +240,14 @@ void ExecuteDebugCommand(const DebugCommand_t& command)
         qd_controller.clearZeroPoint();
         EnsureMotorReady();
         qd_controller.Ctrl(BallBeamController::CtrlType::AngleCtrl, qd_controller.motor_angle);
+        break;
+    case DEBUG_CMD_PI_SET_MODE:
+        if (qd_controller.isTaskActive()) {
+            qd_controller.stopTask();
+            qd_controller.Ctrl(BallBeamController::CtrlType::AngleCtrl, qd_controller.getBalanceAngle());
+        }
+        Communication_ApplyMode(static_cast<uint8_t>(command.arg1));
+        Communication_ReplyMode(static_cast<uint8_t>(command.arg1), command.mode_request_seq, 0U);
         break;
     case DEBUG_CMD_NONE:
     default:
@@ -331,6 +312,8 @@ extern "C" void GimbalTask(void *argument)
     for (;;) {
         ProcessDebugCommands();
         ProcessBallState();
+        static PiControlExecutor pi_control(qd_controller);
+        pi_control.process();
         qd_controller.Ctrl_ISR();
         osDelay(1);
     }

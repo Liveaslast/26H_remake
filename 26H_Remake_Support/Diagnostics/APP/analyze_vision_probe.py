@@ -35,6 +35,24 @@ def parse_args() -> argparse.Namespace:
         default=5,
         help="number of largest acceleration/reversal events to print",
     )
+    parser.add_argument(
+        "--velocity-fit-compare",
+        action="store_true",
+        help="compare causal finite difference and multi-point slopes on per-frame sent_x",
+    )
+    parser.add_argument(
+        "--velocity-fit-windows",
+        nargs="+",
+        type=int,
+        default=[2, 3, 5],
+        metavar="N",
+        help="numbers of distinct vision frames per slope fit (default: 2 3 5)",
+    )
+    parser.add_argument(
+        "--velocity-fit-end-s",
+        type=float,
+        help="compare only the first N seconds from the first probe frame",
+    )
     return parser.parse_args()
 
 
@@ -175,6 +193,86 @@ def print_top_events(name: str, events: list[dict[str, float]], *, count: int) -
         if "dt" in event:
             parts.append(f"dt={event['dt'] * 1000.0:.1f}ms")
         print("  " + " ".join(parts))
+
+
+def print_velocity_fit_comparison(
+    samples: list[dict[str, float | bool | str]],
+    windows: list[int],
+    max_dt_seconds: float,
+    end_seconds: float | None,
+) -> None:
+    if any(window < 2 or window > 20 for window in windows):
+        raise SystemExit("--velocity-fit-windows values must be within 2..20")
+    windows = sorted(set(windows))
+    if end_seconds is not None:
+        if not math.isfinite(end_seconds) or end_seconds <= 0.0:
+            raise SystemExit("--velocity-fit-end-s must be positive")
+        first_t = float(samples[0]["t"])
+        samples = [sample for sample in samples if float(sample["t"]) - first_t <= end_seconds]
+    history: list[tuple[float, float]] = []
+    records: list[tuple[int, float, float, dict[str, float]]] = []
+    for index, sample in enumerate(samples):
+        t = float(sample["t"])
+        x = float(sample["sent_x"])
+        if not bool(sample["sent_valid"]) or not math.isfinite(x):
+            history.clear()
+            continue
+        if history and not 0.0 < t - history[-1][0] <= max_dt_seconds:
+            history.clear()
+        history.append((t, x))
+        history = history[-max(windows):]
+        if len(history) < max(windows):
+            continue
+
+        velocities: dict[str, float] = {}
+        for window in windows:
+            points = history[-window:]
+            t0 = points[0][0]
+            elapsed = [point[0] - t0 for point in points]
+            t_mean = mean(elapsed)
+            x_mean = mean([point[1] for point in points])
+            denominator = sum((value - t_mean) ** 2 for value in elapsed)
+            if denominator <= 0.0:
+                continue
+            velocities[f"slope_{window}"] = sum(
+                (elapsed[i] - t_mean) * (points[i][1] - x_mean)
+                for i in range(window)
+            ) / denominator
+        kalman_v = float(sample["kalman_v"])
+        if math.isfinite(kalman_v):
+            velocities["pi_kalman"] = kalman_v
+        if all(f"slope_{window}" in velocities for window in windows):
+            records.append((index, t, x, velocities))
+
+    if len(records) < 3:
+        print("velocity_fit_compare: not enough consecutive valid frame measurements")
+        return
+
+    names = [f"slope_{window}" for window in windows]
+    kalman_values = [record[3].get("pi_kalman") for record in records]
+    if (all(value is not None for value in kalman_values)
+            and max(kalman_values) - min(kalman_values) > 0.01):
+        names.append("pi_kalman")
+    print(f"velocity_fit_compare: {len(records)} eligible frames; source=sent_x_cm, clock=frame capture t")
+    print("  method       next_frame_MAE_cm  v_step_p95_cm_s  compared_steps")
+    for name in names:
+        errors: list[float] = []
+        changes: list[float] = []
+        for previous, current in zip(records, records[1:]):
+            previous_index, previous_t, previous_x, previous_v = previous
+            current_index, current_t, current_x, current_v = current
+            dt = current_t - previous_t
+            if current_index != previous_index + 1 or not 0.0 < dt <= max_dt_seconds:
+                continue
+            errors.append(abs(current_x - (previous_x + previous_v[name] * dt)))
+            changes.append(abs(current_v[name] - previous_v[name]))
+        print(
+            f"  {name:<12s} {mean(errors):>17.4f} "
+            f"{percentile(changes, 0.95):>16.2f} {len(errors):>15d}"
+        )
+    if "pi_kalman" not in names:
+        print("  pi_kalman omitted: no changing velocity output in this interval.")
+    print("  No trajectory ground truth: prediction error and velocity steps are diagnostics, not accuracy.")
 
 
 def main() -> int:
@@ -363,6 +461,11 @@ def main() -> int:
         measurement_reversals,
         count=args.top_events,
     )
+    if args.velocity_fit_compare:
+        print_velocity_fit_comparison(
+            samples, args.velocity_fit_windows, max_dt_seconds,
+            args.velocity_fit_end_s,
+        )
     return 0
 
 

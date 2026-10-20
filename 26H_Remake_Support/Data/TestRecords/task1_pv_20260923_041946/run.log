@@ -1,0 +1,66 @@
+Config loaded: /home/ikun/vision_workspace/workspace/config/runtime.toml; sections=vision_geometry,tracking,detector,tracker,debug,formal_tracking
+请先把梁放在机械零位；确认安全后按 Enter 设置零点并执行 ba 21：Calibration loaded: /home/ikun/vision_workspace/workspace/assets/calibration/dynamic_calibration_12_30deg.json; rectified=1000x200; angles=+12.000..+30.000deg; samples=10 source_roi=(128, 425, 1141, 121); geometry=8a5cd731dad6
+WARNING: Hailo模型目录缺少deployment.json，无法自动校验geometry_id；当前标定geometry_id=8a5cd731dad6
+Detector warmup skipped; first real detection may take longer.
+Detector loaded: model=/home/ikun/vision_workspace/workspace/assets/models/hailo; imgsz=(128, 640); backend=hailort; circle=off; mode=precision; detect-every=1; track-scale=1.00; confidence=0.25; warmup=0.0ms
+MSPM0 telemetry ready: actual_angle=-129.140deg
+Ball position/velocity streaming enabled; control runs on MCU.
+Task1 control CSV: /home/ikun/vision_workspace/diagnostics/task1_pv_20260923_041946/control.csv
+task init（设零点、ba 21） 已获下位机确认；视觉帧任务字段归零。
+零点和 ba 21 已设置；确认杆角稳定后，输入 task 1 并按 Enter：尚未启动；请输入 task 1。
+零点和 ba 21 已设置；确认杆角稳定后，输入 task 1 并按 Enter：DebugPage 已启动
+本机地址：http://127.0.0.1:8000
+局域网地址：http://<设备IP>:8000
+WiFi MJPEG ready: http://<设备IP>:8080/ (VLC: http://<设备IP>:8080/stream.mjpg)
+Vision probe CSV: /home/ikun/vision_workspace/diagnostics/task1_pv_20260923_041946/vision_probe.csv
+Camera control: exposure_dynamic_framerate=0, auto_exposure=1, exposure_time_absolute=80
+Camera opened: device=/dev/video0; backend=V4L2; mode=1280x720@60.00; fourcc=MJPG; delivery=latest-frame-thread
+x=-0.147cm vx=+0.00cm/s angle=+21.000deg valid=False measurement=True source=yolo_box confidence=0.87 lost=0.0ms processing=109.29ms fps=warming reason=waiting-for-confirmation rates=warming detect_hz=warming track_hz=warming avg_infer=warming avg_total=warming
+有效视觉已就绪；Task1 请求已发送。Ctrl+C 只退出树莓派，请手动复位下位机。
+Task1 已获下位机确认；视觉帧任务字段归零。
+x=-0.081cm vx=+0.00cm/s angle=+25.845deg valid=True measurement=True source=yolo_box confidence=0.80 lost=0.0ms processing=17.89ms fps=56.5 reason=ok loop_hz=61.2 detect_hz=61.2 track_hz=0.0 avg_infer=5.44ms avg_total=24.10ms
+x=+1.080cm vx=+0.00cm/s angle=+28.055deg valid=True measurement=True source=yolo_box confidence=0.86 lost=0.0ms processing=15.69ms fps=59.0 reason=ok loop_hz=61.4 detect_hz=61.4 track_hz=0.0 avg_infer=5.27ms avg_total=19.02ms
+x=+2.988cm vx=+0.00cm/s angle=+23.148deg valid=True measurement=True source=yolo_box confidence=0.86 lost=0.0ms processing=15.91ms fps=59.3 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.26ms avg_total=17.45ms
+x=+4.616cm vx=+0.00cm/s angle=+19.595deg valid=True measurement=True source=yolo_box confidence=0.89 lost=0.0ms processing=18.77ms fps=58.4 reason=ok loop_hz=59.5 detect_hz=59.5 track_hz=0.0 avg_infer=5.30ms avg_total=17.34ms
+x=+5.362cm vx=+0.00cm/s angle=+20.115deg valid=True measurement=True source=yolo_box confidence=0.81 lost=0.0ms processing=18.38ms fps=57.6 reason=ok loop_hz=58.6 detect_hz=58.6 track_hz=0.0 avg_infer=5.35ms avg_total=15.90ms
+x=+5.425cm vx=+0.00cm/s angle=+22.874deg valid=True measurement=True source=yolo_box confidence=0.81 lost=0.0ms processing=18.93ms fps=56.4 reason=ok loop_hz=57.4 detect_hz=57.4 track_hz=0.0 avg_infer=5.32ms avg_total=16.32ms
+x=+5.161cm vx=+0.00cm/s angle=+23.815deg valid=True measurement=True source=yolo_box confidence=0.89 lost=0.0ms processing=14.00ms fps=57.0 reason=ok loop_hz=58.0 detect_hz=58.0 track_hz=0.0 avg_infer=5.43ms avg_total=16.48ms
+x=+4.044cm vx=+0.00cm/s angle=+15.820deg valid=True measurement=True source=yolo_box confidence=0.88 lost=0.0ms processing=13.56ms fps=57.0 reason=ok loop_hz=58.0 detect_hz=58.0 track_hz=0.0 avg_infer=5.40ms avg_total=16.40ms
+x=+1.839cm vx=+0.00cm/s angle=+20.058deg valid=True measurement=True source=yolo_box confidence=0.90 lost=0.0ms processing=14.00ms fps=58.2 reason=ok loop_hz=59.2 detect_hz=59.2 track_hz=0.0 avg_infer=5.34ms avg_total=15.79ms
+x=-0.276cm vx=+0.00cm/s angle=+23.267deg valid=True measurement=True source=yolo_box confidence=0.84 lost=0.0ms processing=18.96ms fps=59.4 reason=ok loop_hz=60.4 detect_hz=60.4 track_hz=0.0 avg_infer=5.24ms avg_total=15.20ms
+x=-1.757cm vx=+0.00cm/s angle=+23.379deg valid=True measurement=True source=yolo_box confidence=0.81 lost=0.0ms processing=13.76ms fps=60.4 reason=ok loop_hz=61.4 detect_hz=61.4 track_hz=0.0 avg_infer=5.32ms avg_total=14.54ms
+x=-2.366cm vx=+0.00cm/s angle=+20.956deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=19.80ms fps=59.8 reason=ok loop_hz=60.8 detect_hz=60.8 track_hz=0.0 avg_infer=5.22ms avg_total=14.52ms
+x=-2.510cm vx=+0.00cm/s angle=+18.721deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=15.03ms fps=58.2 reason=ok loop_hz=59.2 detect_hz=59.2 track_hz=0.0 avg_infer=5.27ms avg_total=15.44ms
+x=-2.891cm vx=+0.00cm/s angle=+18.558deg valid=True measurement=True source=yolo_box confidence=0.47 lost=0.0ms processing=14.04ms fps=59.0 reason=ok loop_hz=60.0 detect_hz=60.0 track_hz=0.0 avg_infer=5.28ms avg_total=15.51ms
+x=-3.169cm vx=+0.00cm/s angle=+18.951deg valid=True measurement=True source=yolo_box confidence=0.87 lost=0.0ms processing=13.19ms fps=59.4 reason=ok loop_hz=60.4 detect_hz=60.4 track_hz=0.0 avg_infer=5.17ms avg_total=15.33ms
+x=-3.116cm vx=+0.00cm/s angle=+18.265deg valid=True measurement=True source=yolo_box confidence=0.88 lost=0.0ms processing=13.61ms fps=59.1 reason=ok loop_hz=60.2 detect_hz=60.2 track_hz=0.0 avg_infer=5.19ms avg_total=15.72ms
+x=-3.095cm vx=+0.00cm/s angle=+17.590deg valid=True measurement=True source=yolo_box confidence=0.84 lost=0.0ms processing=13.99ms fps=59.8 reason=ok loop_hz=60.8 detect_hz=60.8 track_hz=0.0 avg_infer=5.19ms avg_total=15.38ms
+x=-3.092cm vx=+0.00cm/s angle=+17.612deg valid=True measurement=True source=yolo_box confidence=0.87 lost=0.0ms processing=14.06ms fps=60.3 reason=ok loop_hz=61.3 detect_hz=61.3 track_hz=0.0 avg_infer=5.13ms avg_total=14.65ms
+x=-3.117cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.84 lost=0.0ms processing=14.30ms fps=60.2 reason=ok loop_hz=61.2 detect_hz=61.2 track_hz=0.0 avg_infer=5.12ms avg_total=14.23ms
+x=-3.091cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.88 lost=0.0ms processing=16.18ms fps=60.1 reason=ok loop_hz=61.2 detect_hz=61.2 track_hz=0.0 avg_infer=5.15ms avg_total=14.41ms
+x=-3.116cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.89 lost=0.0ms processing=13.48ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.14ms avg_total=14.14ms
+x=-3.090cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.83 lost=0.0ms processing=13.90ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.14ms avg_total=14.17ms
+x=-3.100cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.88 lost=0.0ms processing=13.53ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.17ms avg_total=14.24ms
+x=-3.107cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.84 lost=0.0ms processing=13.82ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.17ms avg_total=14.24ms
+Task1 CSV 采集完成：5s samples=988 gaps=0 path=/home/ikun/vision_workspace/diagnostics/task1_pv_20260923_041946/control.csv；视觉继续运行，按 Ctrl+C 后手动复位下位机。
+PowerShell 取回目录：
+cd D:\26H-remake\26H_Remake_Support
+scp -r "ikun@192.168.137.2:/home/ikun/vision_workspace/diagnostics/task1_pv_20260923_041946" .\Data\TestRecords\
+Task1 视觉 probe 也已停止记录；正式视觉继续运行。
+x=-3.114cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.87 lost=0.0ms processing=13.66ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.15ms avg_total=14.04ms
+x=-3.085cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.82 lost=0.0ms processing=13.84ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.14ms avg_total=13.98ms
+x=-3.108cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=13.86ms fps=60.1 reason=ok loop_hz=61.1 detect_hz=61.1 track_hz=0.0 avg_infer=5.14ms avg_total=13.95ms
+x=-3.106cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.79 lost=0.0ms processing=14.65ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.11ms avg_total=13.86ms
+x=-3.101cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.83 lost=0.0ms processing=13.31ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.11ms avg_total=13.86ms
+x=-3.115cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.89 lost=0.0ms processing=13.39ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.10ms avg_total=13.84ms
+x=-3.110cm vx=+0.00cm/s angle=+17.610deg valid=True measurement=True source=yolo_box confidence=0.86 lost=0.0ms processing=13.53ms fps=60.2 reason=ok loop_hz=61.2 detect_hz=61.2 track_hz=0.0 avg_infer=5.10ms avg_total=13.85ms
+x=-3.108cm vx=+0.00cm/s angle=+17.482deg valid=True measurement=True source=yolo_box confidence=0.82 lost=0.0ms processing=14.93ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.11ms avg_total=13.89ms
+x=-3.113cm vx=+0.00cm/s angle=+17.820deg valid=True measurement=True source=yolo_box confidence=0.90 lost=0.0ms processing=13.72ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.12ms avg_total=13.93ms
+x=-3.108cm vx=+0.00cm/s angle=+17.651deg valid=True measurement=True source=yolo_box confidence=0.88 lost=0.0ms processing=17.11ms fps=59.7 reason=ok loop_hz=60.7 detect_hz=60.7 track_hz=0.0 avg_infer=5.12ms avg_total=13.99ms
+x=-3.093cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.81 lost=0.0ms processing=13.70ms fps=60.0 reason=ok loop_hz=61.0 detect_hz=61.0 track_hz=0.0 avg_infer=5.12ms avg_total=14.04ms
+x=-3.102cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.90 lost=0.0ms processing=13.68ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.12ms avg_total=14.08ms
+x=-3.108cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.83 lost=0.0ms processing=13.68ms fps=60.1 reason=ok loop_hz=61.1 detect_hz=61.1 track_hz=0.0 avg_infer=5.12ms avg_total=14.07ms
+x=-3.108cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=13.45ms fps=60.1 reason=ok loop_hz=61.1 detect_hz=61.1 track_hz=0.0 avg_infer=5.11ms avg_total=14.11ms
+x=-3.118cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.90 lost=0.0ms processing=14.81ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.12ms avg_total=14.05ms
+x=-3.107cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=14.66ms fps=59.9 reason=ok loop_hz=60.9 detect_hz=60.9 track_hz=0.0 avg_infer=5.11ms avg_total=14.03ms
+x=-3.081cm vx=+0.00cm/s angle=+17.640deg valid=True measurement=True source=yolo_box confidence=0.85 lost=0.0ms processing=13.45ms fps=60.1 reason=ok loop_hz=61.1 detect_hz=61.1 track_hz=0.0 avg_infer=5.22ms avg_total=14.09ms

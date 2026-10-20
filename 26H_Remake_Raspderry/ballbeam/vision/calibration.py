@@ -89,6 +89,23 @@ class SourceRoi:
         )
 
 
+def require_matching_source_roi(
+    calibration_roi: SourceRoi | None,
+    configured_roi: SourceRoi,
+) -> None:
+    """Reject legacy or mismatched geometry before any frame is processed."""
+
+    if calibration_roi is None:
+        raise DynamicCalibrationError(
+            "标定文件没有固定粗ROI；请使用当前1280x256方案重新标定"
+        )
+    if calibration_roi != configured_roi:
+        raise DynamicCalibrationError(
+            f"配置粗ROI={configured_roi.xywh} 与标定粗ROI="
+            f"{calibration_roi.xywh} 不一致"
+        )
+
+
 def _finite_array(
     value: Any,
     shape: tuple[int, ...],

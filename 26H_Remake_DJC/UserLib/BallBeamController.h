@@ -8,11 +8,19 @@
 #include "BallStateEstimate.h"
 #include "BallBeamTaskProfile.h"
 
-class BallBeamController : public QDMotorController {
+class BallBeamController : public QDMotorController {           // 对QD电机控制器进一步封装，针对于球杆平衡控制器
 public:
+    struct ControlInputSnapshot {
+        uint32_t tick_ms;
+        float x_cm;
+        float vx_cm_s;
+        float target_v_cm_s;
+    };
+
     enum class TaskId : uint8_t {
         None = 0U,
         Task1 = 1U,
+        VelocityStep = 2U,
     };
 
     BallBeamController(QD4310& motor,
@@ -27,6 +35,7 @@ public:
     [[nodiscard]] bool isBalanceEnabled() const { return balance_enabled; }
 
     void setBallTarget(float target_x_cm);
+    void startPositionTarget(float target_x_cm);
     void startBallSequence(float first_target_x_cm, float second_target_x_cm, float turn_window_cm, float turn_vx_cm_s);
     void setBalanceAngle(float angle_rad);
     void setBalanceTable(float neg5_deg, float zero_deg, float pos5_deg);
@@ -47,6 +56,16 @@ public:
     void setBallAngleLimit(float max_delta_deg);
     void setBallDeadband(float x_deadband_cm, float vx_deadband_cm_s);
     void setBallOuterLoopPeriod(float period_ms);
+    void setBallPositionPid(float kp, float ki, float kd);
+    void setBallVelocityPid(float kp, float ki, float kd);
+    bool startVelocityTarget(float target_v_cm_s);
+    void setBallPositionDeadband(float deadband_cm);
+    void setBallSpeedLimit(float max_target_v_cm_s);
+    void setVisionAb(float alpha, float beta);
+    void setVisionActiveLimits(float max_velocity_cm_s, float max_x_step_cm);
+    void setVisionActivePrediction(float predict_ms, float predict_step_cm);
+    void setVelocityTestPid(float kp, float ki, float kd);
+    void setVelocityTestConfig(float kp, float ki, float kd, float target_v_cm_s);
     void setVisionFilter(float x_alpha, float vx_alpha, float dx_deadband_cm);
     void setVisionMeasurementDeadband(float deadband_cm);
     void setVisionFilterLimits(float max_velocity_cm_s, float interp_duration_ms, float max_x_step_cm);
@@ -100,6 +119,7 @@ public:
     [[nodiscard]] uint16_t getVisionSeq() const { return vision_seq; }
     [[nodiscard]] uint32_t getLastVisionTick() const { return last_vision_tick_ms; }
     [[nodiscard]] uint32_t getVisionTimeout() const { return vision_timeout_ms; }
+    [[nodiscard]] bool getLastControlInput(ControlInputSnapshot *snapshot) const;
 
 private:
     static constexpr float kDegToRad = 0.017453292519943295f;
@@ -127,6 +147,7 @@ private:
     void applyBallTarget(float target_x_cm);
     void applyTaskProfile(const BallBeamTaskProfile& profile);
     void startTask1SequenceWhenReady();
+    void finishVelocityTest(bool aborted);
 
     bool balance_enabled{false};
     TaskId active_task{TaskId::None};
@@ -145,6 +166,18 @@ private:
     float kp_deg_per_cm{0.35f};
     float ki_deg_per_cm_s{0.0f};
     float kd_deg_per_cm_s{0.0f};
+    BallBeamTaskProfile::ControlMode task_control_mode{BallBeamTaskProfile::ControlMode::LegacyBrakePush};
+    BallBeamTaskProfile::PositionVelocity position_velocity_gains{};
+    bool position_pid_override_set{false};
+    bool velocity_pid_override_set{false};
+    float position_pid_override[3]{0.0f, 0.0f, 0.0f};
+    float velocity_pid_override[3]{0.0f, 0.0f, 0.0f};
+    bool position_deadband_override_set{false};
+    float position_deadband_override_cm{0.0f};
+    bool speed_limit_override_set{false};
+    float speed_limit_override_cm_s{0.0f};
+    float position_integral_cm_s{0.0f};
+    float velocity_integral_deg{0.0f};
     float target_feedforward_deg_per_cm{0.0f};
     float target_feedforward_pos_deg_per_cm{0.0f};
     float target_feedforward_neg_deg_per_cm{0.0f};
@@ -176,6 +209,15 @@ private:
     // task endpoint.  Bring it back to the fixed zero first, without changing
     // the stored zero point, then launch the normal +5 -> -5 sequence.
     bool task_start_pending{false};
+    float velocity_test_command_cm_s{0.0f};
+    float velocity_test_target_cm_s{0.0f};
+    uint32_t velocity_test_start_ms{0U};
+    float velocity_test_kp_deg_per_cm_s{0.5f};
+    float velocity_test_ki_deg_per_cm{0.0f};
+    float velocity_test_kd_deg_s_per_cm_s{0.0f};
+    float velocity_test_previous_v_cm_s{0.0f};
+    float velocity_test_d_filtered_cm_s2{0.0f};
+    bool velocity_test_has_previous_v{false};
     uint8_t ball_sequence_stage{0U};
     float ball_sequence_first_target_cm{5.0f};
     float ball_sequence_second_target_cm{-5.0f};
@@ -213,6 +255,8 @@ private:
     float x_deadband_cm{0.27f};
     float vx_deadband_cm_s{2.5f};
     uint32_t ball_outer_loop_period_ms{10U};
+    ControlInputSnapshot last_control_input{};
+    bool has_last_control_input{false};
     float vision_x_alpha{0.35f};
     float vision_vx_alpha{0.025f};
     float vision_measurement_deadband_cm{0.04f};

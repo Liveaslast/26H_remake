@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Capture the current STM32 BallBeam debug stream with host timestamps.
 
-This script matches DebugTask.cpp in 26H_Remake_DJC.  The firmware emits one
-strict 13-field CSV sample every 5 ms.  No position or velocity processing is
-performed here; host-side timing and hold-duration diagnostics are appended.
+This script matches the control, vision, and sysid CSV modes in DebugTask.cpp.
+Physical values are converted from the firmware's 0.01-unit integers; host-side
+timing and hold-duration diagnostics are appended.
 """
 
 from __future__ import annotations
@@ -48,8 +48,6 @@ VISION_FIELDS = [
     "vision_age_ms",
 ]
 
-INTEGER_FIELD_INDEXES = set(range(7, 13))
-
 CSV_FIELDS = [
     "host_iso8601",
     "host_unix_ns",
@@ -66,6 +64,7 @@ CSV_FIELDS = [
     "estimate_valid",
     "accepted_raw_x_cm",
     *FIRMWARE_FIELDS,
+    "sysid_state_valid",
     "x_changed",
     "x_unchanged_ms",
     "raw_line",
@@ -75,7 +74,7 @@ CSV_FIELDS = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Capture STM32 13-field BallBeam CSV with host timestamps. "
+            "Capture STM32 BallBeam debug CSV with host timestamps. "
             "Close VOFA/other serial programs before starting."
         )
     )
@@ -86,7 +85,7 @@ def parse_args() -> argparse.Namespace:
         choices=("listen", "ba22", "task1"),
         default="listen",
         help=(
-            "listen: capture only; ba22: send 'ba 22'; "
+            "listen: capture only; ba22: send 'ball balance-angle 22'; "
             "task1: send 'task 1' and always send 'task stop' on exit"
         ),
     )
@@ -98,7 +97,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--firmware-csv",
-        choices=("unchanged", "vision", "control", "off"),
+        choices=("unchanged", "vision", "control", "sysid", "off"),
         default="vision",
         help="select STM32 debug output mode; vision is the latency diagnostic mode",
     )
@@ -107,17 +106,24 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help=(
             "output CSV; default: "
-            "Data/TestRecords/mcu_vision_<mode>_<timestamp>.csv"
+            "Data/TestRecords/mcu_<firmware-csv>_<mode>_<timestamp>.csv"
         ),
     )
     parser.add_argument("--report-s", type=float, default=1.0)
+    parser.add_argument(
+        "--velocity-pid", nargs=3, type=float, metavar=("KP", "KI", "KD"),
+        help="send 'ball pid-velocity KP KI KD' to MCU USART6 before capture",
+    )
     parser.add_argument("--flush-s", type=float, default=0.5)
     parser.add_argument(
         "--list-ports",
         action="store_true",
         help="list serial ports and exit",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.velocity_pid is not None and args.mode != "listen":
+        parser.error("--velocity-pid requires --mode listen")
+    return args
 
 
 def import_serial():
@@ -138,7 +144,7 @@ def output_path_for(args: argparse.Namespace) -> Path:
         return args.output.expanduser().resolve()
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(__file__).resolve().parents[2] / "Data" / "TestRecords"
-    return output_dir / f"mcu_vision_{args.mode}_{stamp}.csv"
+    return output_dir / f"mcu_{args.firmware_csv}_{args.mode}_{stamp}.csv"
 
 
 def parse_firmware_sample(line: str) -> list[float | int] | None:
@@ -146,19 +152,30 @@ def parse_firmware_sample(line: str) -> list[float | int] | None:
     if len(parts) != len(FIRMWARE_FIELDS) or any(part == "" for part in parts):
         return None
 
-    values: list[float | int] = []
     try:
-        for index, part in enumerate(parts):
-            number = float(part)
-            if index in INTEGER_FIELD_INDEXES:
-                if not number.is_integer():
-                    return None
-                values.append(int(number))
-            else:
-                values.append(number)
+        values = [int(part) for part in parts]
     except ValueError:
         return None
-    return values
+    return [value * 0.01 for value in values[:7]] + values[7:]
+
+
+def parse_sysid_sample(line: str) -> dict[str, float | int] | None:
+    parts = [part.strip() for part in line.split(",")]
+    if len(parts) != 6 or parts[0] != "S" or any(part == "" for part in parts):
+        return None
+    try:
+        time_ms, angle_001deg, x_001cm, v_001cms, valid = map(int, parts[1:])
+    except ValueError:
+        return None
+    if valid not in (0, 1):
+        return None
+    return {
+        "stm32_time_ms": time_ms,
+        "motor_angle_deg": angle_001deg * 0.01,
+        "estimated_x_cm": x_001cm * 0.01,
+        "estimated_vx_cm_s": v_001cms * 0.01,
+        "sysid_state_valid": valid,
+    }
 
 
 def parse_vision_sample(line: str) -> dict[str, float | int] | None:
@@ -235,6 +252,8 @@ def capture(args: argparse.Namespace, serial_module) -> int:
     latest_age_ms = 0
     latest_tracking_valid = -1
     latest_rx_seq = -1
+    latest_sample_type = ""
+    latest_sysid_valid = 0
     max_age_ms = 0
     started_perf_ns = time.perf_counter_ns()
     deadline_ns = (
@@ -266,9 +285,15 @@ def capture(args: argparse.Namespace, serial_module) -> int:
                 )
 
             if args.mode == "ba22":
-                send_command(ser, writer, started_perf_ns, "ba 22")
+                send_command(ser, writer, started_perf_ns, "ball balance-angle 22")
             elif args.mode == "task1":
                 send_command(ser, writer, started_perf_ns, "task 1")
+            if args.velocity_pid is not None:
+                kp, ki, kd = args.velocity_pid
+                if not (0.0 <= kp <= 4.0 and 0.0 <= ki <= 5.0 and 0.0 <= kd <= 0.2):
+                    raise ValueError("velocity PID out of range: Kp 0..4, Ki 0..5, Kd 0..0.2")
+                send_command(ser, writer, started_perf_ns,
+                             f"ball pid-velocity {kp:g} {ki:g} {kd:g}")
 
             try:
                 while deadline_ns is None or time.perf_counter_ns() < deadline_ns:
@@ -281,9 +306,13 @@ def capture(args: argparse.Namespace, serial_module) -> int:
                     if not line:
                         continue
 
-                    vision_values = parse_vision_sample(line)
+                    sysid_values = parse_sysid_sample(line)
+                    vision_values = (
+                        None if sysid_values is not None else parse_vision_sample(line)
+                    )
                     values = (
-                        None if vision_values is not None else parse_firmware_sample(line)
+                        None if sysid_values is not None or vision_values is not None
+                        else parse_firmware_sample(line)
                     )
                     host_unix_ns = time.time_ns()
                     common = {
@@ -301,7 +330,15 @@ def capture(args: argparse.Namespace, serial_module) -> int:
                     }
                     previous_rx_ns = rx_perf_ns
 
-                    if (values is None) and (vision_values is None):
+                    if sysid_values is not None:
+                        latest_sample_type = "sysid"
+                        latest_sysid_valid = int(sysid_values["sysid_state_valid"])
+                        if latest_sysid_valid:
+                            latest_x = float(sysid_values["estimated_x_cm"])
+                            latest_vx = float(sysid_values["estimated_vx_cm_s"])
+                        sample_count += 1
+                        writer.writerow({**common, "record_type": "sysid_sample", **sysid_values})
+                    elif (values is None) and (vision_values is None):
                         record_type = "device_text"
                         # A comma-containing malformed telemetry row is distinct from
                         # ordinary command/status text and must remain visible.
@@ -321,6 +358,7 @@ def capture(args: argparse.Namespace, serial_module) -> int:
                             assert values is not None
                             firmware = dict(zip(FIRMWARE_FIELDS, values))
                             record_type = "control_sample"
+                        latest_sample_type = record_type
                         current_x = float(firmware["estimated_x_cm"])
                         if previous_x is None or current_x != previous_x:
                             changed = 1
@@ -357,13 +395,21 @@ def capture(args: argparse.Namespace, serial_module) -> int:
                             if x_changed_ns is None
                             else (rx_perf_ns - x_changed_ns) / 1e6
                         )
-                        print(
-                            f"samples={sample_count} x={latest_x:+.2f} cm "
-                            f"vx={latest_vx:+.2f} cm/s age={latest_age_ms} ms "
-                            f"x_hold={held_ms:.0f} ms valid={latest_tracking_valid} "
-                            f"seq={latest_rx_seq} bad={bad_count}",
-                            flush=True,
-                        )
+                        if latest_sample_type == "sysid":
+                            print(
+                                f"samples={sample_count} x={latest_x:+.2f} cm "
+                                f"vx={latest_vx:+.2f} cm/s "
+                                f"state_valid={latest_sysid_valid} bad={bad_count}",
+                                flush=True,
+                            )
+                        else:
+                            print(
+                                f"samples={sample_count} x={latest_x:+.2f} cm "
+                                f"vx={latest_vx:+.2f} cm/s age={latest_age_ms} ms "
+                                f"x_hold={held_ms:.0f} ms valid={latest_tracking_valid} "
+                                f"seq={latest_rx_seq} bad={bad_count}",
+                                flush=True,
+                            )
                         next_report_ns = rx_perf_ns + int(max(args.report_s, 0.1) * 1e9)
             except KeyboardInterrupt:
                 print("收到 Ctrl+C，正在安全收尾……", flush=True)
@@ -385,11 +431,10 @@ def capture(args: argparse.Namespace, serial_module) -> int:
         print("請確認 COM 號正確，並關閉 VOFA、串口助手等佔用程式。", file=sys.stderr)
         return 2
 
-    print(
-        f"完成：samples={sample_count}, device_text={text_count}, "
-        f"unparsed_csv={bad_count}, max_vision_age={max_age_ms} ms",
-        flush=True,
-    )
+    summary = f"完成：samples={sample_count}, device_text={text_count}, unparsed_csv={bad_count}"
+    if latest_sample_type != "sysid":
+        summary += f", max_vision_age={max_age_ms} ms"
+    print(summary, flush=True)
     print(f"CSV：{output_path}", flush=True)
     return 0
 

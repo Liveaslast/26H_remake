@@ -472,7 +472,7 @@ def main():
     parser.add_argument("--plus-timeout-s", type=float, default=5.0)
     parser.add_argument("--minus-capture-s", type=float, default=5.0)
     parser.add_argument("--device-seq", action="store_true")
-    parser.add_argument("--seq-capture-s", type=float, default=8.0)
+    parser.add_argument("--seq-capture-s", type=float, default=5.0)
     parser.add_argument("--seq-turn-window", type=float, default=0.7)
     parser.add_argument("--seq-turn-v", type=float, default=0.7)
 

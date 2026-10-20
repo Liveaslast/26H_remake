@@ -394,8 +394,9 @@ CMD_BALL_STATE = 0x07
 CMD_TELEMETRY = 0x84
 FLAG_TRACKING_VALID = 1 << 0
 
-PI_FRAME = struct.Struct("<BBBHiiIB")
-TELEMETRY_FRAME = struct.Struct("<BBBHiiiiIBB")
+PI_FRAME = struct.Struct("<BBBHiiIBHB")
+TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhhhBBHHhhhIIHB")
+TUNING_TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhhhBBHHhhhIIHHB")
 
 
 def _crc8(data: bytes, polynomial: int = 0x07, init: int = 0x00) -> int:
@@ -426,6 +427,7 @@ def _pack_ball_state(
         int(round(float(pos_cm) * 100.0)),
         int(round(float(vel_cm_s) * 100.0)),
         pi_time_ms,
+        0, 0,  # no task request in a calibration tool
         0,
     )[:-1]
     return body_without_crc + bytes((_crc8(body_without_crc),))
@@ -455,6 +457,7 @@ class _HtaskSerialClient:
         self._write_lock = threading.Lock()
         self._seq = 0
         self._last_error: str | None = None
+        self._mode_ready = False
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -465,6 +468,12 @@ class _HtaskSerialClient:
             timeout=self.read_timeout_seconds,
             write_timeout=self.write_timeout_seconds,
         )
+        try:
+            self._select_task_mode()
+        except Exception:
+            self._serial.close()
+            self._serial = None
+            raise
         self._stop_event.clear()
         self._thread = threading.Thread(
             target=self._reader_loop,
@@ -472,6 +481,23 @@ class _HtaskSerialClient:
             daemon=True,
         )
         self._thread.start()
+
+    def _select_task_mode(self) -> None:
+        """Preparation tools select task telemetry, but never request a motion task."""
+        self._mode_ready = False
+        self._rx_buffer.clear()
+        body = struct.pack("<BBHB", PI_RX_SOF, 0x06, 0, 1)
+        self._serial.write(body + bytes((_crc8(body),)))
+        deadline = time.perf_counter() + 1.0
+        while time.perf_counter() < deadline:
+            count = self._serial.in_waiting
+            if count:
+                self._rx_buffer.extend(self._serial.read(count))
+                self._parse_available()
+                if self._mode_ready:
+                    return
+            time.sleep(0.005)
+        raise RuntimeIOError(self._last_error or "任务遥测模式切换超时，请更新配套固件")
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -533,46 +559,42 @@ class _HtaskSerialClient:
                 self._parse_available()
 
     def _parse_available(self) -> None:
-        frame_size = TELEMETRY_FRAME.size
-        while True:
-            while self._rx_buffer and self._rx_buffer[0] != STM32_TX_SOF:
+        sizes = {0x84: TELEMETRY_FRAME.size, 0x85: TUNING_TELEMETRY_FRAME.size, 0x86: 7}
+        while self._rx_buffer:
+            if self._rx_buffer[0] != STM32_TX_SOF:
                 del self._rx_buffer[0]
-            if len(self._rx_buffer) < frame_size:
+                continue
+            if len(self._rx_buffer) < 2:
                 return
-            frame = bytes(self._rx_buffer[:frame_size])
+            size = sizes.get(self._rx_buffer[1])
+            if size is None:
+                del self._rx_buffer[0]
+                continue
+            if len(self._rx_buffer) < size:
+                return
+            frame = bytes(self._rx_buffer[:size])
             if _crc8(frame[:-1]) != frame[-1]:
                 del self._rx_buffer[0]
-                self._last_error = "遥测帧CRC错误"
+                self._last_error = "telemetry CRC mismatch"
                 continue
-            del self._rx_buffer[:frame_size]
-            (
-                sof,
-                cmd,
-                status,
-                seq,
-                rod_angle_001deg,
-                motor_angle_001deg,
-                motor_speed_001dps,
-                motor_current_001a,
-                stm32_time_ms,
-                fault_code,
-                _crc,
-            ) = TELEMETRY_FRAME.unpack(frame)
-            if sof != STM32_TX_SOF or cmd != CMD_TELEMETRY:
-                self._last_error = "收到非遥测帧"
+            del self._rx_buffer[:size]
+            if frame[1] == 0x86:
+                _, _, seq, mode, result, _ = struct.unpack("<BBHBBB", frame)
+                if seq == 0 and mode == 1:
+                    self._mode_ready = result == 0
+                    self._last_error = None if self._mode_ready else "任务遥测模式被拒绝"
                 continue
-            del status, seq, rod_angle_001deg, motor_speed_001dps
-            del motor_current_001a, stm32_time_ms, fault_code
+            if not self._mode_ready:
+                continue
+            # Both modes share the control prefix; motor angle starts at byte 11.
             telemetry = SimpleNamespace(
-                actual_angle_deg=motor_angle_001deg / 100.0,
+                actual_angle_deg=int.from_bytes(frame[11:13], "little", signed=True) / 100.0,
                 received_monotonic=time.perf_counter(),
             )
             self.latest_actual_angle = telemetry
             self._last_error = None
-            callback = self.on_actual_angle
-            if callback is not None:
-                callback(telemetry)
-
+            if self.on_actual_angle is not None:
+                self.on_actual_angle(telemetry)
 
 def interpolate_angle_samples(
     history: tuple[tuple[float, float], ...],

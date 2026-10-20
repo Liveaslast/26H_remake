@@ -10,7 +10,7 @@ import serial
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Set BallBeam zero point and balance angle 22 degrees"
+        description="Set BallBeam zero point and the firmware's Task1 balance angle"
     )
     parser.add_argument("--port", default="COM26")
     parser.add_argument("--baudrate", type=int, default=115200)
@@ -32,7 +32,7 @@ def main() -> int:
             if line:
                 print(line, flush=True)
 
-    print("initialize_done: zero point set, balance angle set to 22 deg")
+    print("initialize_done: zero point set, balance angle requested from firmware profile (21 deg in current floor-test build)")
     print("Do not run this script again unless the MCU was reset/flashed or the mechanical zero changed.")
     return 0
 

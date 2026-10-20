@@ -1,0 +1,8 @@
+created_at=2026-09-21T16:48:38+08:00
+workspace=/home/ikun/vision_workspace/workspace
+lighting_label=dark
+static_duration_s=15
+motion_duration_s=15
+exposure_time_absolute=90
+exposure_unit_us=100
+config=/home/ikun/vision_workspace/workspace/config/runtime.toml

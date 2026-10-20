@@ -15,7 +15,7 @@ DEFAULT_OUTPUT = SUPPORT_ROOT / "Data" / "TestRecords" / "task1_latest.csv"
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run fixed task1: 0 -> +5 -> -5 and stop"
+        description="Initialize at mechanical zero, then run fixed Task1 on operator command"
     )
     parser.add_argument("--port", default="COM26")
     parser.add_argument("--baudrate", type=int, default=115200)
@@ -92,7 +92,7 @@ def main() -> int:
             ]
         )
 
-    print("Running task1: 0 -> +5 -> -5 -> stop", flush=True)
+    print("Prepare mechanical zero, then type task 1 to start; Ctrl+C closes the host only.", flush=True)
     return subprocess.run(command, cwd=SUPPORT_ROOT).returncode
 
 

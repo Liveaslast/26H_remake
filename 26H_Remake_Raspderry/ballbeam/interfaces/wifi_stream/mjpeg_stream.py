@@ -22,11 +22,8 @@ from urllib.parse import urlsplit
 import cv2
 import numpy as np
 
-from ...hardware.runtime import (
-    CameraMode,
-    FixedUSBCamera,
-    RuntimeIOError,
-)
+from ...errors import RuntimeIOError
+from ...hardware.camera import CameraMode, FixedUSBCamera
 
 
 STREAM_PATH = "/stream.mjpg"

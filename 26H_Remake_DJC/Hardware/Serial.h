@@ -24,6 +24,7 @@ uint8_t Serial_GetRxData(void);
 uint8_t Serial_GetRxByte(uint8_t *data);
 uint8_t Serial_GetRxOverflow(void);
 void Serial_ClearRxOverflow(void);
+void Serial_DiscardRxBuffer(void);
 uint8_t Serial_GetTxOverflow(void);
 void Serial_ClearTxOverflow(void);
 

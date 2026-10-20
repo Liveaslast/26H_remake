@@ -1,7 +1,8 @@
 """Capture the firmware-encapsulated Task1 sequence.
 
-The host sends only ``task 1``.  Task parameters and the 0 -> +5 -> -5
-sequence are owned by the STM32 BallBeamController.
+After mechanical-zero confirmation, the host sends ``task init`` (zero point
+and the firmware profile balance angle), then waits for the operator to enter ``task 1``. Ctrl+C only
+closes this host process; the STM32 is reset manually.
 """
 
 from __future__ import annotations
@@ -33,138 +34,34 @@ def main() -> int:
     # Includes the automatic return to x=0 when a previous Task1 ended at -5.
     parser.add_argument("--capture-s", type=float, default=12.0)
     parser.add_argument("--print-ms", type=float, default=300.0)
-    parser.add_argument(
-        "--bbp-short",
-        nargs=4,
-        type=float,
-        metavar=("KP", "MARGIN_CM", "MAX_DEG", "DIST_CM"),
-        help=(
-            "after 'task 1', override the short-move brake profile through "
-            "the existing serial command: bbp KP MARGIN_CM MAX_DEG DIST_CM"
-        ),
-    )
-    parser.add_argument(
-        "--bbp-long",
-        nargs=4,
-        type=float,
-        metavar=("KP", "MARGIN_CM", "MAX_DEG", "DIST_CM"),
-        help=(
-            "after 'task 1', override the long-move brake profile through "
-            "the existing serial command: bbpd KP MARGIN_CM MAX_DEG DIST_CM"
-        ),
-    )
-    parser.add_argument(
-        "--bbp-negative-max",
-        type=float,
-        metavar="MAX_DEG",
-        help=(
-            "after 'task 1', override the negative-move brake limit through "
-            "the existing serial command: bbpn MAX_DEG"
-        ),
-    )
-    parser.add_argument(
-        "--bpush-positive",
-        nargs=4,
-        type=float,
-        metavar=("WINDOW_CM", "VX_CM_S", "PUSH_DEG", "MAX_DEG"),
-        help=(
-            "after 'task 1', override only the positive terminal push through "
-            "the existing serial command: bpushp WINDOW_CM VX_CM_S PUSH_DEG MAX_DEG"
-        ),
-    )
-    parser.add_argument(
-        "--bpush-negative",
-        nargs=4,
-        type=float,
-        metavar=("WINDOW_CM", "VX_CM_S", "PUSH_DEG", "MAX_DEG"),
-        help=(
-            "after 'task 1', override only the negative terminal push through "
-            "the existing serial command: bpushm WINDOW_CM VX_CM_S PUSH_DEG MAX_DEG"
-        ),
-    )
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
-
-    if args.bbp_short is not None and any(value < 0.0 for value in args.bbp_short):
-        parser.error("--bbp-short values must be non-negative")
-    if args.bbp_long is not None and any(value < 0.0 for value in args.bbp_long):
-        parser.error("--bbp-long values must be non-negative")
-    if args.bbp_negative_max is not None and args.bbp_negative_max < 0.0:
-        parser.error("--bbp-negative-max must be non-negative")
-    if args.bpush_positive is not None and any(
-        value < 0.0 for value in args.bpush_positive
-    ):
-        parser.error("--bpush-positive values must be non-negative")
-    if args.bpush_negative is not None and any(
-        value < 0.0 for value in args.bpush_negative
-    ):
-        parser.error("--bpush-negative values must be non-negative")
 
     output = unique_output_path(args.output, args.overwrite)
     rows = []
 
+    input("请先把梁放在机械零位；确认安全后按 Enter 设置零点并执行 ba 21：")
     with serial.Serial(args.port, args.baudrate, timeout=0.2) as ser:
         print(f"open {args.port} @ {args.baudrate} -> {output}", flush=True)
         with output.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(handle, fieldnames=HEADER)
             writer.writeheader()
 
+            print("command: > task init (set_zeropoint + ba 21)", flush=True)
+            ser.write(b"task init\r\n")
+            ser.flush()
+            while input("确认杆角已稳定后输入 task 1 并按 Enter：").strip().lower() != "task 1":
+                print("尚未启动；请输入 task 1。", flush=True)
             print("command: > task 1", flush=True)
             ser.write(b"task 1\r\n")
             ser.flush()
 
-            if args.bbp_short is not None:
-                kp, margin_cm, max_deg, dist_cm = args.bbp_short
-                command = f"bbp {kp:g} {margin_cm:g} {max_deg:g} {dist_cm:g}"
-                print(f"command: > {command}", flush=True)
-                ser.write((command + "\r\n").encode("ascii"))
-                ser.flush()
-
-            if args.bbp_long is not None:
-                kp, margin_cm, max_deg, dist_cm = args.bbp_long
-                command = f"bbpd {kp:g} {margin_cm:g} {max_deg:g} {dist_cm:g}"
-                print(f"command: > {command}", flush=True)
-                ser.write((command + "\r\n").encode("ascii"))
-                ser.flush()
-
-            if args.bbp_negative_max is not None:
-                command = f"bbpn {args.bbp_negative_max:g}"
-                print(f"command: > {command}", flush=True)
-                ser.write((command + "\r\n").encode("ascii"))
-                ser.flush()
-
-            if args.bpush_positive is not None:
-                window_cm, vx_cm_s, push_deg, max_deg = args.bpush_positive
-                command = (
-                    f"bpushp {window_cm:g} {vx_cm_s:g} {push_deg:g} {max_deg:g}"
-                )
-                print(f"command: > {command}", flush=True)
-                ser.write((command + "\r\n").encode("ascii"))
-                ser.flush()
-
-            if args.bpush_negative is not None:
-                window_cm, vx_cm_s, push_deg, max_deg = args.bpush_negative
-                command = (
-                    f"bpushm {window_cm:g} {vx_cm_s:g} {push_deg:g} {max_deg:g}"
-                )
-                print(f"command: > {command}", flush=True)
-                ser.write((command + "\r\n").encode("ascii"))
-                ser.flush()
-
             time.sleep(0.05)
 
             start_time = time.monotonic()
-            try:
-                capture_device_sequence(
-                    ser, writer, rows, start_time, args.capture_s, args.print_ms
-                )
-            finally:
-                # Ctrl+C must not leave the previous task latched in the MCU.
-                try:
-                    ser.write(b"task stop\r\n")
-                    ser.flush()
-                except serial.SerialException:
-                    pass
+            capture_device_sequence(
+                ser, writer, rows, start_time, args.capture_s, args.print_ms
+            )
 
     print(f"capture_done samples={len(rows)} output={output}", flush=True)
     return 0

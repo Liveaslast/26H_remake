@@ -1,24 +1,25 @@
-# ==============================
-# Local files - do not upload
-# ==============================
+# ==========================================
+# Ignore everything by default
+# ==========================================
 
-/99_docs/
-/Tools/
-/_pi_raw/
-/_pi_raw_new/
-/.vscode/
+/*
 
-# Personal notes
-/9月复刻.md
+# ==========================================
+# Only upload these root files
+# ==========================================
 
-# Root PDFs
-/*.pdf
+!/.gitignore
+!/README.md
 
-# Local calibration/runtime configs
-/calibration_complete_12_30.json
-/calibration_pi_active.json
-/config_pi_active.toml
-/_local_backups/
+# ==========================================
+# Only upload these project directories
+# ==========================================
 
-# Runtime archive
-/vision_runtime_trace.tar.gz
+!/26H_Remake_DJC/
+!/26H_Remake_DJC/**
+
+!/26H_Remake_Raspderry/
+!/26H_Remake_Raspderry/**
+
+!/26H_Remake_Support/
+!/26H_Remake_Support/**

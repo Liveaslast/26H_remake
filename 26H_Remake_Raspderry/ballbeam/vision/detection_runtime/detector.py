@@ -48,6 +48,7 @@ class AdaptiveBallDetectorConfig:
     ncnn_backend: Literal["ultralytics", "cpp", "hailo", "hailort"] = "ultralytics"
     ncnn_threads: int = 2
     circle_backend: Literal["python", "cpp"] = "python"
+    enable_circle_refinement: bool = True
     circle: CircleRefineConfig = field(default_factory=lambda: CircleRefineConfig(ransac_iterations=150))
 
     def __post_init__(self) -> None:
@@ -225,31 +226,90 @@ def _iou(first: Box, second: Box) -> float:
     return intersection / max(1e-6, first_area + second_area - intersection)
 
 
-class AdaptiveBallDetector:
-    def __init__(self, config: AdaptiveBallDetectorConfig | None = None, *, model: Any | None = None,
-                 circle_refiner: CircleRefiner = refine_circle) -> None:
-        self.config = config or AdaptiveBallDetectorConfig()
-        self._model = model
-        self._circle_refiner = circle_refiner
-        if self.config.circle_backend == "cpp" and circle_refiner is refine_circle:
-            from .circle_refine_native import refine_circle_native
+class ModelInference:
+    """Load one backend and normalize its predictions; no tracking history."""
 
-            self._circle_refiner = refine_circle_native
-        self._cache: list[_CachedBall] = []
-        self._frame_index = 0
-        self._previous_gray: np.ndarray | None = None
-        self._flow_tracks: list[_FlowTrack] = []
-        self._force_detection = True
+    def __init__(self, config, model=None):
+        self.config = config
+        self._model = model
         self._model_load_ms = 0.0
 
-    def reset_tracking(self) -> None:
-        """Clear temporal state while retaining the already loaded model."""
+    def _get_model(self) -> Any:
+        if self._model is None:
+            started = time.perf_counter()
+            if self.config.ncnn_backend == "cpp":
+                from .ncnn_backend import CppNcnnBackend
 
-        self._cache.clear()
-        self._frame_index = 0
+                self._model = CppNcnnBackend(self.config.model_path, threads=self.config.ncnn_threads)
+                self._model_load_ms = (time.perf_counter() - started) * 1000.0
+                return self._model
+            if self.config.ncnn_backend == "hailo":
+                from .hailo_backend import HailoUltralyticsBackend
+
+                self._model = HailoUltralyticsBackend(self.config.model_path)
+                self._model_load_ms = (time.perf_counter() - started) * 1000.0
+                return self._model
+            if self.config.ncnn_backend == "hailort":
+                from .hailort_backend import NativeHailoRtBackend
+
+                self._model = NativeHailoRtBackend(self.config.model_path)
+                self._model_load_ms = (time.perf_counter() - started) * 1000.0
+                return self._model
+            try:
+                from ultralytics import YOLO
+            except ImportError as exc:
+                raise RuntimeError("Install ultralytics and ncnn before running this detector") from exc
+            self._model = YOLO(str(self.config.model_path), task="detect")
+            self._model_load_ms = (time.perf_counter() - started) * 1000.0
+        return self._model
+
+    def predict(self, frame):
+        started = time.perf_counter()
+        model = self._get_model()
+        prediction = model.predict(source=frame, imgsz=self.config.image_size, conf=self.config.confidence,
+                                   iou=self.config.iou_threshold, classes=[self.config.class_id],
+                                   max_det=self.config.max_detections, verbose=False)[0]
+        model_call_ms = (time.perf_counter() - started) * 1000.0
+        backend_timings = getattr(prediction, "timings", None)
+        model_load_ms = self._model_load_ms
+        self._model_load_ms = 0.0
+        if backend_timings is None:
+            # Ultralytics does not expose its internal split; keep the full
+            # wrapper call visible in the inference bucket instead of hiding it.
+            model_preprocess_ms = model_postprocess_ms = 0.0
+            model_inference_ms = model_call_ms
+        else:
+            model_preprocess_ms = float(getattr(backend_timings, "preprocess_ms", 0.0))
+            model_inference_ms = float(getattr(backend_timings, "inference_ms", model_call_ms))
+            model_postprocess_ms = float(getattr(backend_timings, "postprocess_ms", 0.0))
+        timings = StageTimings(
+            model_load_ms=model_load_ms, model_call_ms=model_call_ms,
+            preprocess_ms=model_preprocess_ms, inference_ms=model_inference_ms,
+            postprocess_ms=model_postprocess_ms,
+        )
+        boxes_object = getattr(prediction, "boxes", None)
+        if boxes_object is None or len(boxes_object) == 0:
+            return [], timings
+        boxes, confidences, classes = (_to_numpy(boxes_object.xyxy).reshape(-1, 4), _to_numpy(boxes_object.conf).reshape(-1), _to_numpy(boxes_object.cls).reshape(-1))
+        valid: list[tuple[Box, float, int]] = []
+        for index in range(min(len(boxes), len(confidences), len(classes))):
+            class_id, confidence = int(round(float(classes[index]))), float(confidences[index])
+            x1, y1, x2, y2 = (float(value) for value in boxes[index])
+            if class_id == self.config.class_id and confidence >= self.config.confidence and x2 > x1 and y2 > y1:
+                valid.append(((x1, y1, x2, y2), confidence, class_id))
+        return valid, timings
+
+
+class OpticalFlowTracker:
+    """Own feature points and adjacent-frame optical flow, not model loading."""
+
+    def __init__(self, config):
+        self.config = config
+        self.reset()
+
+    def reset(self):
         self._previous_gray = None
-        self._flow_tracks.clear()
-        self._force_detection = True
+        self._flow_tracks = []
 
     def _features(self, gray: np.ndarray, box: Box) -> np.ndarray:
         height, width = gray.shape
@@ -274,7 +334,7 @@ class AdaptiveBallDetector:
         scale = self.config.track_scale
         return tuple(value * scale for value in box)  # type: ignore[return-value]
 
-    def _initialize_flow(self, frame: np.ndarray, balls: tuple[BallDetection, ...]) -> None:
+    def initialize(self, frame: np.ndarray, balls: tuple[BallDetection, ...]) -> None:
         gray = self._flow_gray(frame)
         self._previous_gray = gray
         self._flow_tracks = [_FlowTrack(ball, self._features(gray, self._flow_box(ball.box_xyxy))) for ball in balls]
@@ -283,7 +343,7 @@ class AdaptiveBallDetector:
     def _boxes_overlap(first: Box, second: Box) -> bool:
         return _iou(first, second) > 0.35
 
-    def _track(self, frame: np.ndarray) -> AdaptiveFrameDetection:
+    def track(self, frame: np.ndarray, frame_index: int) -> AdaptiveFrameDetection:
         started = time.perf_counter()
         gray = self._flow_gray(frame)
         balls: list[BallDetection] = []
@@ -358,43 +418,29 @@ class AdaptiveBallDetector:
                 reason = reason or "overlap"
         self._previous_gray = gray
         self._flow_tracks = next_tracks
-        self._force_detection = reason is not None
         tracking_ms = (time.perf_counter() - started) * 1000.0
-        return AdaptiveFrameDetection(tuple(balls), 0.0, 0.0, 0, 0, self._frame_index,
+        return AdaptiveFrameDetection(tuple(balls), 0.0, 0.0, 0, 0, frame_index,
                                       mode=self.config.mode, frame_source="tracked", tracking_ms=tracking_ms,
                                       valid_track_points=valid_total,
                                       tracking_quality=min(qualities) if qualities else 0.0,
-                                      correction_requested=self._force_detection, correction_reason=reason,
+                                      correction_requested=reason is not None, correction_reason=reason,
                                       timings=StageTimings(total_ms=tracking_ms, tracking_ms=tracking_ms))
 
-    def _get_model(self) -> Any:
-        if self._model is None:
-            started = time.perf_counter()
-            if self.config.ncnn_backend == "cpp":
-                from .ncnn_backend import CppNcnnBackend
 
-                self._model = CppNcnnBackend(self.config.model_path, threads=self.config.ncnn_threads)
-                self._model_load_ms = (time.perf_counter() - started) * 1000.0
-                return self._model
-            if self.config.ncnn_backend == "hailo":
-                from .hailo_backend import HailoUltralyticsBackend
+class CircleRefinementCache:
+    """Own circle fitting, association and reuse of earlier fitted circles."""
 
-                self._model = HailoUltralyticsBackend(self.config.model_path)
-                self._model_load_ms = (time.perf_counter() - started) * 1000.0
-                return self._model
-            if self.config.ncnn_backend == "hailort":
-                from .hailort_backend import NativeHailoRtBackend
+    def __init__(self, config, circle_refiner=refine_circle):
+        self.config = config
+        self._circle_refiner = circle_refiner
+        if config.circle_backend == "cpp" and circle_refiner is refine_circle:
+            from .circle_refine_native import refine_circle_native
 
-                self._model = NativeHailoRtBackend(self.config.model_path)
-                self._model_load_ms = (time.perf_counter() - started) * 1000.0
-                return self._model
-            try:
-                from ultralytics import YOLO
-            except ImportError as exc:
-                raise RuntimeError("Install ultralytics and ncnn before running this detector") from exc
-            self._model = YOLO(str(self.config.model_path), task="detect")
-            self._model_load_ms = (time.perf_counter() - started) * 1000.0
-        return self._model
+            self._circle_refiner = refine_circle_native
+        self._cache = []
+
+    def reset(self):
+        self._cache.clear()
 
     def _predicted_box(self, cached: _CachedBall) -> Box:
         multiplier = max(1, cached.missed_frames + 1)
@@ -464,60 +510,21 @@ class AdaptiveBallDetector:
                                 circle.radius_px * scale, circle.arc_coverage, circle.mean_residual_px,
                                 circle.inlier_count, circle.candidate_count, "cached refinement")
 
-    def detect(self, frame: np.ndarray) -> AdaptiveFrameDetection:
-        if not isinstance(frame, np.ndarray) or frame.size == 0:
-            raise ValueError("frame must be a non-empty numpy.ndarray")
-        started = time.perf_counter()
-        self._frame_index += 1
-        detection_frame = (self._force_detection or self.config.detection_interval == 1
-                           or (self._frame_index - 1) % self.config.detection_interval == 0)
-        if not detection_frame:
-            return self._track(frame)
-        self._force_detection = False
-        result = self._detect_yolo(frame)
-        self._initialize_flow(frame, result.balls)
-        return replace(result, timings=replace(result.timings,
-                                               total_ms=(time.perf_counter() - started) * 1000.0))
-
-    def _detect_yolo(self, frame: np.ndarray) -> AdaptiveFrameDetection:
-        started = time.perf_counter()
-        model = self._get_model()
-        prediction = model.predict(source=frame, imgsz=self.config.image_size, conf=self.config.confidence,
-                                   iou=self.config.iou_threshold, classes=[self.config.class_id],
-                                   max_det=self.config.max_detections, verbose=False)[0]
-        model_call_ms = (time.perf_counter() - started) * 1000.0
-        backend_timings = getattr(prediction, "timings", None)
-        model_load_ms = self._model_load_ms
-        self._model_load_ms = 0.0
-        if backend_timings is None:
-            # Ultralytics does not expose its internal split; keep the full
-            # wrapper call visible in the inference bucket instead of hiding it.
-            model_preprocess_ms = model_postprocess_ms = 0.0
-            model_inference_ms = model_call_ms
-            inference_ms = model_call_ms
-        else:
-            model_preprocess_ms = float(getattr(backend_timings, "preprocess_ms", 0.0))
-            model_inference_ms = float(getattr(backend_timings, "inference_ms", model_call_ms))
-            model_postprocess_ms = float(getattr(backend_timings, "postprocess_ms", 0.0))
-            inference_ms = model_inference_ms
-        boxes_object = getattr(prediction, "boxes", None)
-        if boxes_object is None or len(boxes_object) == 0:
-            self._cache = [item for item in self._cache if item.missed_frames + 1 <= self.config.cache_max_missed_frames]
+    def refine(self, frame, valid, frame_index):
+        if not self.config.enable_circle_refinement:
+            self.reset()
+            balls = tuple(_box_center_detection(*item) for item in valid)
+            return AdaptiveFrameDetection(
+                balls, 0.0, 0.0, 0, 0, frame_index,
+                unmatched_count=len(balls), mode=self.config.mode,
+            )
+        if not valid:
+            self._cache = [item for item in self._cache
+                           if item.missed_frames + 1 <= self.config.cache_max_missed_frames]
             for item in self._cache:
                 item.missed_frames += 1
-            return AdaptiveFrameDetection(
-                (), inference_ms, 0.0, 0, 0, self._frame_index, mode=self.config.mode,
-                timings=StageTimings(model_load_ms=model_load_ms, model_call_ms=model_call_ms,
-                                     preprocess_ms=model_preprocess_ms, inference_ms=model_inference_ms,
-                                     postprocess_ms=model_postprocess_ms),
-            )
-        boxes, confidences, classes = (_to_numpy(boxes_object.xyxy).reshape(-1, 4), _to_numpy(boxes_object.conf).reshape(-1), _to_numpy(boxes_object.cls).reshape(-1))
-        valid: list[tuple[Box, float, int]] = []
-        for index in range(min(len(boxes), len(confidences), len(classes))):
-            class_id, confidence = int(round(float(classes[index]))), float(confidences[index])
-            x1, y1, x2, y2 = (float(value) for value in boxes[index])
-            if class_id == self.config.class_id and confidence >= self.config.confidence and x2 > x1 and y2 > y1:
-                valid.append(((x1, y1, x2, y2), confidence, class_id))
+            return AdaptiveFrameDetection((), 0.0, 0.0, 0, 0, frame_index,
+                                          mode=self.config.mode)
         association_started = time.perf_counter()
         matches, ambiguous_boxes, candidate_count = self._associate([item[0] for item in valid])
         association_ms = (time.perf_counter() - association_started) * 1000.0
@@ -536,7 +543,7 @@ class AdaptiveBallDetector:
                 cached = self._cache[cache_index]
                 if self._is_motion_large(cached.box, box):
                     force_refine, reason = True, "motion"
-                elif self._frame_index - cached.last_refined_frame >= self.config.refine_interval:
+                elif frame_index - cached.last_refined_frame >= self.config.refine_interval:
                     force_refine, reason = True, "periodic"
             if force_refine:
                 refinement = self._circle_refiner(frame, box, self.config.circle)
@@ -551,7 +558,7 @@ class AdaptiveBallDetector:
                     old_center = _box_center(cached.box) if cached else _box_center(box)
                     new_center = _box_center(box)
                     velocity = (new_center[0] - old_center[0], new_center[1] - old_center[1]) if cached else (0.0, 0.0)
-                    next_cache.append(_CachedBall(box, cached.box if cached else box, velocity, refinement, self._frame_index,
+                    next_cache.append(_CachedBall(box, cached.box if cached else box, velocity, refinement, frame_index,
                                                   association_cost=match[1] if match else 1.0))
                     successes += 1
                     balls.append(BallDetection(box, confidence, class_id, refinement.center_px, refinement.radius_px, "ransac", refinement.arc_coverage, refinement.mean_residual_px, refinement.inlier_count))
@@ -588,15 +595,57 @@ class AdaptiveBallDetector:
         cache_update_ms = (time.perf_counter() - cache_update_started) * 1000.0
         refinement_ms = (time.perf_counter() - refine_started) * 1000.0
         balls.sort(key=lambda item: item.confidence, reverse=True)
-        return AdaptiveFrameDetection(tuple(balls), inference_ms, refinement_ms, refined_count, reused_count, self._frame_index,
-                                      associated_count=len(matches), unmatched_count=len(valid) - len(matches),
-                                      ambiguous_count=len(ambiguous_boxes), motion_refined_count=motion_refined,
-                                      periodic_refined_count=periodic_refined, ransac_success_count=successes,
-                                      ransac_failure_count=failures, mode=self.config.mode,
-                                      timings=StageTimings(model_load_ms=model_load_ms, model_call_ms=model_call_ms,
-                                                           preprocess_ms=model_preprocess_ms,
-                                                           inference_ms=model_inference_ms,
-                                                           postprocess_ms=model_postprocess_ms,
-                                                           association_ms=association_ms,
-                                                           refinement_ms=refinement_ms,
-                                                           cache_update_ms=cache_update_ms))
+        return AdaptiveFrameDetection(
+            tuple(balls), 0.0, refinement_ms, refined_count, reused_count, frame_index,
+            associated_count=len(matches), unmatched_count=len(valid) - len(matches),
+            ambiguous_count=len(ambiguous_boxes), motion_refined_count=motion_refined,
+            periodic_refined_count=periodic_refined, ransac_success_count=successes,
+            ransac_failure_count=failures, mode=self.config.mode,
+            timings=StageTimings(association_ms=association_ms,
+                                 refinement_ms=refinement_ms, cache_update_ms=cache_update_ms),
+        )
+
+
+class AdaptiveBallDetector:
+    """Schedule inference or optical flow and return one stable result type."""
+
+    def __init__(self, config: AdaptiveBallDetectorConfig | None = None, *, model=None,
+                 circle_refiner: CircleRefiner = refine_circle):
+        self.config = config or AdaptiveBallDetectorConfig()
+        self.inference = ModelInference(self.config, model)
+        self.flow = OpticalFlowTracker(self.config)
+        self.refinement = CircleRefinementCache(self.config, circle_refiner)
+        self.reset_tracking()
+
+    def reset_tracking(self):
+        """Discard temporal state while retaining the loaded model."""
+        self.flow.reset()
+        self.refinement.reset()
+        self._frame_index = 0
+        self._force_detection = True
+
+    def detect(self, frame: np.ndarray) -> AdaptiveFrameDetection:
+        if not isinstance(frame, np.ndarray) or frame.size == 0:
+            raise ValueError("frame must be a non-empty numpy.ndarray")
+        started = time.perf_counter()
+        self._frame_index += 1
+        detection_frame = (self._force_detection or self.config.detection_interval == 1
+                           or (self._frame_index - 1) % self.config.detection_interval == 0)
+        if not detection_frame:
+            result = self.flow.track(frame, self._frame_index)
+            self._force_detection = result.correction_requested
+            return result
+
+        self._force_detection = False
+        candidates, model_timings = self.inference.predict(frame)
+        result = self.refinement.refine(frame, candidates, self._frame_index)
+        self.flow.initialize(frame, result.balls)
+        return replace(
+            result, inference_ms=model_timings.inference_ms,
+            timings=replace(
+                model_timings, total_ms=(time.perf_counter() - started) * 1000.0,
+                association_ms=result.timings.association_ms,
+                refinement_ms=result.timings.refinement_ms,
+                cache_update_ms=result.timings.cache_update_ms,
+            ),
+        )

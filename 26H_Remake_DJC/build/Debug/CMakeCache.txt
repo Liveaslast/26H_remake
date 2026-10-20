@@ -123,6 +123,9 @@ CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 //Enable/Disable output of build database during the build.
 CMAKE_EXPORT_BUILD_DATABASE:BOOL=
 
+//No help, variable specified on the command line.
+CMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE
+
 //Value Computed by CMake.
 CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/pkgRedirects
 
@@ -226,8 +229,8 @@ CMAKE_STRIP:FILEPATH=D:/MCU-debug/MCU_TOOL/13.2 Rel1/bin/arm-none-eabi-strip.exe
 //Path to a program.
 CMAKE_TAPI:FILEPATH=CMAKE_TAPI-NOTFOUND
 
-//The CMake toolchain file
-CMAKE_TOOLCHAIN_FILE:FILEPATH=D:/26H-remake/26H_Remake_DJC/cmake/gcc-arm-none-eabi.cmake
+//No help, variable specified on the command line.
+CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=D:/26H-remake/26H_Remake_DJC/cmake/gcc-arm-none-eabi.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console

@@ -616,6 +616,80 @@ def print_transition(rows):
         print("transition applied trace: NA")
 
 
+def print_control_input_summary(rows):
+    if not rows or not {"control_ms", "control_x", "control_v"}.issubset(rows[0]):
+        return
+    updates = []
+    last_ms = None
+    for row in rows:
+        control_ms = int(row["control_ms"])
+        if control_ms == 0 or control_ms == last_ms:
+            continue
+        updates.append(row)
+        last_ms = control_ms
+    if not updates:
+        print("outer-loop inputs: no completed update captured")
+        return
+    intervals = [
+        (int(b["control_ms"]) - int(a["control_ms"])) & 0xFFFFFFFF
+        for a, b in zip(updates, updates[1:])
+    ]
+    observed_lag = [
+        (int(row["stm32_ms"]) - int(row["control_ms"])) & 0xFFFFFFFF
+        for row in updates
+    ]
+    print(f"outer-loop input updates: {len(updates)} (distinct control_ms)")
+    if intervals:
+        ordered = sorted(intervals)
+        print(
+            f"  period_ms min/median/max: "
+            f"{ordered[0]} / {ordered[len(ordered) // 2]} / {ordered[-1]}"
+        )
+    print(
+        f"  first telemetry after update median/max: "
+        f"{sorted(observed_lag)[len(observed_lag) // 2]} / {max(observed_lag)}ms"
+    )
+    print("  control_x/control_v are cached at the update, not decimated telemetry estimates")
+
+
+def print_velocity_test_summary(rows):
+    updates = []
+    last_ms = None
+    for row in rows:
+        stamp = int(row.get("control_ms", 0))
+        if stamp and stamp != last_ms:
+            updates.append(row)
+            last_ms = stamp
+    if not updates:
+        print("velocity test: no outer-loop updates captured")
+        return
+    print("velocity test (20 ms outer-loop updates):")
+    for phase in ("speed_step",):
+        segment = [r for r in updates if r["phase"] == phase]
+        if not segment:
+            print(f"  {phase}: no samples")
+            continue
+        errors = [r["target_v"] - r["control_v"] for r in segment]
+        angle_errors = [r["target_angle"] - r["angle"] for r in segment]
+        print(
+            f"  {phase}: updates={len(segment)} "
+            f"t={segment[0]['t_s']:.3f}..{segment[-1]['t_s']:.3f}s "
+            f"x={segment[0]['control_x']:.2f}..{segment[-1]['control_x']:.2f}cm "
+            f"target_v={mean(r['target_v'] for r in segment):+.2f}cm/s "
+            f"v mean/min/max={mean(r['control_v'] for r in segment):+.2f}/"
+            f"{min(r['control_v'] for r in segment):+.2f}/"
+            f"{max(r['control_v'] for r in segment):+.2f}cm/s "
+            f"error mean/peak_abs={mean(errors):+.2f}/{max(map(abs, errors)):.2f}cm/s "
+            f"angle_error peak_abs={max(map(abs, angle_errors)):.2f}deg"
+        )
+        print(f"    first: {fmt_row(segment[0])} target_v={segment[0]['target_v']:+.2f}")
+        print(f"    last:  {fmt_row(segment[-1])} target_v={segment[-1]['target_v']:+.2f}")
+    ending = next((r for r in rows if r["phase"] in ("speed_done", "speed_abort")), None)
+    print(f"  exit: {ending['phase'] if ending else 'not captured'} "
+          f"{fmt_row(ending) if ending else ''}")
+    print("  speed-loop gains come from the MCU vpid setting; compare runs with that setting recorded")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Analyze 0cm -> +5cm -> -5cm sequence capture.")
     parser.add_argument("csv")
@@ -633,7 +707,15 @@ def main():
         print("no rows")
         return
     print(f"samples/duration: {len(rows)} / {rows[-1]['t_s'] - rows[0]['t_s']:.3f}s")
+    print_control_input_summary(rows)
     print()
+
+    if any(row["phase"].startswith("speed_") for row in rows):
+        if not all("target_v" in row for row in rows):
+            print("velocity test requires target_v in the control CSV")
+            return
+        print_velocity_test_summary(rows)
+        return
 
     # Task1 restart may contain a pre-positioning interval at target_x=0.
     # Do not mistake that interval for the +5 leg.

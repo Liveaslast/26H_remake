@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 namespace {
 
 constexpr uint32_t kMinimumEstimatorDtMs = 5U;
@@ -11,13 +14,20 @@ constexpr uint32_t kMinimumEstimatorDtMs = 5U;
 
 void BallBeamController::enableBalance()
 {
+    taskENTER_CRITICAL();
+    has_last_control_input = false;
+    last_control_input = {};
+    taskEXIT_CRITICAL();
     balance_enabled = true;
     has_control_vision_seq = false;
     has_last_control_x = false;
     last_raw_control_dx_cm = 0.0f;
     last_control_dx_cm = 0.0f;
     ball_error_integral_cm_s = 0.0f;
+    velocity_integral_deg = 0.0f;
     last_error_cm = 0.0f;
+    velocity_test_has_previous_v = false;
+    velocity_test_d_filtered_cm_s2 = 0.0f;
     previous_error_cm = 0.0f;
     previous_previous_error_cm = 0.0f;
     has_incremental_pid_history = false;
@@ -37,7 +47,12 @@ void BallBeamController::enableBalance()
 
 void BallBeamController::disableBalance()
 {
+    taskENTER_CRITICAL();
+    has_last_control_input = false;
+    last_control_input = {};
+    taskEXIT_CRITICAL();
     balance_enabled = false;
+    velocity_integral_deg = 0.0f;
     brake_p_active = false;
     brake_p_active_direction = 0.0f;
     target_motion_direction = 0.0f;
@@ -53,12 +68,30 @@ void BallBeamController::disableBalance()
     last_terminal_brake_gate_active = false;
     last_stalled_before_terminal = false;
     active_task = TaskId::None;
+    velocity_test_command_cm_s = 0.0f;
+    velocity_test_start_ms = 0U;
+    velocity_test_has_previous_v = false;
+    velocity_test_d_filtered_cm_s2 = 0.0f;
 }
 
 void BallBeamController::applyTaskProfile(const BallBeamTaskProfile& profile)
 {
     setBalanceAngle(profile.balance_angle_deg * kDegToRad);
-    // Task1 uses feedforward + BBP/BPUSH only; keep the legacy ball PID disabled.
+    task_control_mode = profile.control_mode;
+    position_velocity_gains = profile.position_velocity;
+    if (position_pid_override_set) {
+        position_velocity_gains.position_kp_per_s = position_pid_override[0];
+        position_velocity_gains.position_ki_per_s2 = position_pid_override[1];
+        position_velocity_gains.position_kd = position_pid_override[2];
+    }
+    if (velocity_pid_override_set) {
+        position_velocity_gains.velocity_kp_deg_per_cm_s = velocity_pid_override[0];
+        position_velocity_gains.velocity_ki_deg_per_cm = velocity_pid_override[1];
+        position_velocity_gains.velocity_kd_deg_s_per_cm_s = velocity_pid_override[2];
+    }
+    position_integral_cm_s = 0.0f;
+    velocity_integral_deg = 0.0f;
+    // The legacy PID remains disabled; the selected Task1 law is separate.
     setBallGains(0.0f, 0.0f, 0.0f);
     setBallFeedforwardSplit(profile.feedforward.positive, profile.feedforward.negative);
 
@@ -77,28 +110,59 @@ void BallBeamController::applyTaskProfile(const BallBeamTaskProfile& profile)
 
     setBallTerminalBrakeGate(profile.terminal.brake_window,
                               profile.terminal.brake_velocity);
-    setBallTerminalPushPositive(profile.terminal.push_positive_window,
-                                profile.terminal.push_positive_velocity,
-                                profile.terminal.push_positive_kp,
-                                2.0f);
-    setBallTerminalPushNegative(profile.terminal.push_negative_window,
-                                profile.terminal.push_negative_velocity,
-                                profile.terminal.push_negative_kp,
-                                2.0f);
+    if (task_control_mode == BallBeamTaskProfile::ControlMode::LegacyBrakePush) {
+        setBallTerminalPushPositive(profile.terminal.push_positive_window,
+                                    profile.terminal.push_positive_velocity,
+                                    profile.terminal.push_positive_kp,
+                                    2.0f);
+        setBallTerminalPushNegative(profile.terminal.push_negative_window,
+                                    profile.terminal.push_negative_velocity,
+                                    profile.terminal.push_negative_kp,
+                                    2.0f);
+    } else {
+        setBallTerminalPushPositive(0.0f, 0.0f, 0.0f, 0.0f);
+        setBallTerminalPushNegative(0.0f, 0.0f, 0.0f, 0.0f);
+    }
 
     setBallAngleLimit(profile.angle_command_limit_deg);
     setBallDeadband(profile.x_deadband_cm, profile.vx_deadband_cm_s);
+    if (position_deadband_override_set) {
+        x_deadband_cm = position_deadband_override_cm;
+    }
+    if (speed_limit_override_set) {
+        position_velocity_gains.max_target_velocity_cm_s = speed_limit_override_cm_s;
+    }
     setBallOuterLoopPeriod(profile.outer_loop_period_ms);
     setAngleRateLimit(profile.angle_rate_deg_per_s * kDegToRad);
 }
 
 bool BallBeamController::startTask(const TaskId task)
 {
-    if (task != TaskId::Task1) {
+    const bool velocity_test = task == TaskId::VelocityStep;
+    if (task != TaskId::Task1 && !velocity_test) {
+        return false;
+    }
+
+    if (velocity_test && (std::fabs(velocity_test_target_cm_s) < 1.0f ||
+        !has_estimated_ball_state || !isVisionFresh(HAL_GetTick()) ||
+        std::fabs(output_ball_x_cm) > 1.0f ||
+        std::fabs(output_ball_vx_cm_s) > 0.7f)) {
         return false;
     }
 
     applyTaskProfile(BallBeamTaskProfiles::Task1);
+    velocity_test_command_cm_s = 0.0f;
+    if (velocity_test) {
+        velocity_test_command_cm_s = velocity_test_target_cm_s;
+        velocity_test_start_ms = HAL_GetTick();
+        velocity_test_has_previous_v = false;
+        velocity_test_d_filtered_cm_s2 = 0.0f;
+        applyBallTarget(0.0f);
+        active_task = task;
+        enableBalance();
+        ball_sequence_stage = 10U; // fixed-speed segment
+        return true;
+    }
     task_start_pending = false;
     const float start_x_cm = has_estimated_ball_state ? output_ball_x_cm : ball_x_cm;
     const float start_vx_cm_s = has_estimated_ball_state ? output_ball_vx_cm_s : 0.0f;
@@ -117,6 +181,27 @@ bool BallBeamController::startTask(const TaskId task)
     return true;
 }
 
+void BallBeamController::finishVelocityTest(const bool aborted)
+{
+    balance_enabled = false;
+    active_task = TaskId::None;
+    velocity_test_command_cm_s = 0.0f;
+    velocity_test_start_ms = 0U;
+    velocity_test_has_previous_v = false;
+    velocity_test_d_filtered_cm_s2 = 0.0f;
+    velocity_integral_deg = 0.0f;
+    ball_sequence_stage = aborted ? 13U : 12U;
+    last_angle_cmd_rad = balance_angle_rad;
+    last_sent_angle_cmd_rad = balance_angle_rad;
+    taskENTER_CRITICAL();
+    if (has_last_control_input) {
+        last_control_input.tick_ms = HAL_GetTick();
+        last_control_input.target_v_cm_s = 0.0f;
+    }
+    taskEXIT_CRITICAL();
+    Ctrl(CtrlType::AngleCtrl, balance_angle_rad);
+}
+
 void BallBeamController::startTask1SequenceWhenReady()
 {
     task_start_pending = false;
@@ -130,7 +215,7 @@ void BallBeamController::initializeTask()
 {
     disableBalance();
     setZeroPoint();
-    setBalanceAngle(22.0f * kDegToRad);
+    setBalanceAngle(BallBeamTaskProfiles::Task1.balance_angle_deg * kDegToRad);
     Ctrl(CtrlType::AngleCtrl, getBalanceAngle());
 }
 
@@ -144,6 +229,18 @@ void BallBeamController::setBallTarget(const float target_x_cm_)
     ball_sequence_active = false;
     ball_sequence_stage = 0U;
     applyBallTarget(target_x_cm_);
+}
+
+void BallBeamController::startPositionTarget(const float target_x_cm_)
+{
+    if (!std::isfinite(target_x_cm_) || std::fabs(target_x_cm_) > 10.0f) {
+        return;
+    }
+    if (task_control_mode != BallBeamTaskProfile::ControlMode::PositionVelocity) {
+        applyTaskProfile(BallBeamTaskProfiles::Task1);
+    }
+    setBallTarget(target_x_cm_);
+    enableBalance();
 }
 
 void BallBeamController::startBallSequence(const float first_target_x_cm,
@@ -178,6 +275,8 @@ void BallBeamController::applyBallTarget(const float target_x_cm_)
     target_x_cm = target_x_cm_;
     updateEffectiveBrakePForMove();
     ball_error_integral_cm_s = 0.0f;
+    position_integral_cm_s = 0.0f;
+    velocity_integral_deg = 0.0f;
     last_error_cm = 0.0f;
     previous_error_cm = 0.0f;
     previous_previous_error_cm = 0.0f;
@@ -208,6 +307,7 @@ void BallBeamController::setBalanceAngle(const float angle_rad)
     last_angle_cmd_rad = angle_reference_rad;
     last_sent_angle_cmd_rad = last_angle_cmd_rad;
     ball_error_integral_cm_s = 0.0f;
+    velocity_integral_deg = 0.0f;
     last_error_cm = 0.0f;
     previous_error_cm = 0.0f;
     previous_previous_error_cm = 0.0f;
@@ -555,6 +655,137 @@ void BallBeamController::setBallOuterLoopPeriod(const float period_ms)
     has_last_control_x = false;
     last_raw_control_dx_cm = 0.0f;
     last_control_dx_cm = 0.0f;
+}
+
+void BallBeamController::setVelocityTestPid(const float kp, const float ki, const float kd)
+{
+    if (!std::isfinite(kp) || !std::isfinite(ki) || !std::isfinite(kd) ||
+        kp < 0.0f || kp > 4.0f || ki < 0.0f || ki > 5.0f ||
+        kd < 0.0f || kd > 0.2f) {
+        return;
+    }
+    velocity_test_kp_deg_per_cm_s = kp;
+    velocity_test_ki_deg_per_cm = ki;
+    velocity_test_kd_deg_s_per_cm_s = kd;
+    velocity_integral_deg = 0.0f;
+    velocity_test_has_previous_v = false;
+    velocity_test_d_filtered_cm_s2 = 0.0f;
+}
+
+void BallBeamController::setBallPositionPid(const float kp, const float ki, const float kd)
+{
+    if (!std::isfinite(kp) || !std::isfinite(ki) || !std::isfinite(kd) ||
+        kp < 0.0f || ki < 0.0f || kd < 0.0f) {
+        return;
+    }
+    position_pid_override[0] = kp;
+    position_pid_override[1] = ki;
+    position_pid_override[2] = kd;
+    position_pid_override_set = true;
+    position_velocity_gains.position_kp_per_s = kp;
+    position_velocity_gains.position_ki_per_s2 = ki;
+    position_velocity_gains.position_kd = kd;
+    position_integral_cm_s = 0.0f;
+}
+
+void BallBeamController::setBallVelocityPid(const float kp, const float ki, const float kd)
+{
+    if (!std::isfinite(kp) || !std::isfinite(ki) || !std::isfinite(kd) ||
+        kp < 0.0f || kp > 4.0f || ki < 0.0f || ki > 5.0f ||
+        kd < 0.0f || kd > 0.2f) {
+        return;
+    }
+    velocity_pid_override[0] = kp;
+    velocity_pid_override[1] = ki;
+    velocity_pid_override[2] = kd;
+    velocity_pid_override_set = true;
+    position_velocity_gains.velocity_kp_deg_per_cm_s = kp;
+    position_velocity_gains.velocity_ki_deg_per_cm = ki;
+    position_velocity_gains.velocity_kd_deg_s_per_cm_s = kd;
+    setVelocityTestPid(kp, ki, kd);
+}
+
+bool BallBeamController::startVelocityTarget(const float target_v_cm_s)
+{
+    if (!std::isfinite(target_v_cm_s) || std::fabs(target_v_cm_s) < 1.0f ||
+        std::fabs(target_v_cm_s) > 5.0f) {
+        return false;
+    }
+    velocity_test_target_cm_s = target_v_cm_s;
+    return startTask(TaskId::VelocityStep);
+}
+
+void BallBeamController::setBallPositionDeadband(const float deadband_cm)
+{
+    if (std::isfinite(deadband_cm)) {
+        x_deadband_cm = std::max(0.0f, deadband_cm);
+        position_deadband_override_cm = x_deadband_cm;
+        position_deadband_override_set = true;
+    }
+}
+
+void BallBeamController::setBallSpeedLimit(const float max_target_v_cm_s)
+{
+    if (std::isfinite(max_target_v_cm_s) && max_target_v_cm_s > 0.0f &&
+        max_target_v_cm_s <= 12.0f) {
+        position_velocity_gains.max_target_velocity_cm_s = max_target_v_cm_s;
+        speed_limit_override_cm_s = max_target_v_cm_s;
+        speed_limit_override_set = true;
+    }
+}
+
+void BallBeamController::setVisionAb(const float alpha, const float beta)
+{
+    if (std::isfinite(alpha) && std::isfinite(beta) &&
+        alpha >= 0.0f && alpha <= 1.0f && beta >= 0.0f && beta <= 1.0f) {
+        vision_x_alpha = alpha;
+        vision_vx_alpha = beta;
+    }
+}
+
+void BallBeamController::setVisionActiveLimits(const float max_velocity_cm_s,
+                                               const float max_x_step_cm)
+{
+    if (std::isfinite(max_velocity_cm_s) && max_velocity_cm_s > 0.0f &&
+        std::isfinite(max_x_step_cm) && max_x_step_cm > 0.0f) {
+        vision_max_velocity_cm_s = max_velocity_cm_s;
+        vision_max_x_step_cm = max_x_step_cm;
+    }
+}
+
+void BallBeamController::setVisionActivePrediction(const float predict_ms,
+                                                   const float predict_step_cm)
+{
+    if (std::isfinite(predict_ms) && predict_ms >= 0.0f && predict_ms <= 80.0f &&
+        std::isfinite(predict_step_cm) && predict_step_cm >= 0.0f) {
+        vision_predict_hold_ms = static_cast<uint32_t>(predict_ms);
+        vision_predict_max_step_cm = predict_step_cm;
+    }
+}
+
+void BallBeamController::setVelocityTestConfig(const float kp, const float ki,
+                                               const float kd, const float target_v_cm_s)
+{
+    if (!std::isfinite(target_v_cm_s) || std::fabs(target_v_cm_s) < 1.0f ||
+        std::fabs(target_v_cm_s) > 5.0f) {
+        return;
+    }
+    setBallVelocityPid(kp, ki, kd);
+    velocity_test_target_cm_s = target_v_cm_s;
+}
+
+bool BallBeamController::getLastControlInput(ControlInputSnapshot *snapshot) const
+{
+    if (snapshot == nullptr) {
+        return false;
+    }
+    taskENTER_CRITICAL();
+    const bool available = has_last_control_input;
+    if (available) {
+        *snapshot = last_control_input;
+    }
+    taskEXIT_CRITICAL();
+    return available;
 }
 
 void BallBeamController::setVisionFilter(const float x_alpha,
@@ -965,6 +1196,10 @@ void BallBeamController::updateBalanceControl(const BallStateEstimate_t& state, 
     }
 
     if (state.valid == 0U) {
+        if (velocity_test_command_cm_s != 0.0f) {
+            finishVelocityTest(true);
+        }
+        velocity_integral_deg = 0.0f;
         has_control_vision_seq = false;
         has_last_control_x = false;
         last_raw_control_dx_cm = 0.0f;
@@ -983,6 +1218,19 @@ void BallBeamController::updateBalanceControl(const BallStateEstimate_t& state, 
     if ((last_control_tick_ms != 0U) &&
         ((now_ms - last_control_tick_ms) < ball_outer_loop_period_ms)) {
         return;
+    }
+
+    const bool velocity_test = velocity_test_command_cm_s != 0.0f;
+    if (velocity_test) {
+        const uint32_t elapsed_ms = now_ms - velocity_test_start_ms;
+        if (std::fabs(state.vx_cm_s) >= 12.0f || elapsed_ms >= 8000U) {
+            finishVelocityTest(true);
+            return;
+        }
+        if (std::fabs(state.x_cm) >= 6.0f) {
+            finishVelocityTest(state.x_cm * velocity_test_command_cm_s < 0.0f);
+            return;
+        }
     }
 
     if (task_start_pending &&
@@ -1056,159 +1304,149 @@ void BallBeamController::updateBalanceControl(const BallStateEstimate_t& state, 
     }
     last_control_dx_cm = d_x_cm;
 
-    if (dt_s > 0.0f) {
-        ball_error_integral_cm_s += error_cm * dt_s;
-        ball_error_integral_cm_s = std::clamp(ball_error_integral_cm_s,
-                                              -integral_limit_cm_s,
-                                              integral_limit_cm_s);
-    }
-
-    last_error_cm = error_cm;
-    const float min_angle_rad = angle_reference_rad - max_angle_delta_deg * kDegToRad;
-    const float max_angle_rad = angle_reference_rad + max_angle_delta_deg * kDegToRad;
-    const float control_velocity_cm_s = (dt_s > 0.0f) ? (d_x_cm / dt_s) : 0.0f;
-    const float velocity_cm_s = state.vx_cm_s;
-    const float abs_error_cm = std::fabs(error_cm);
-    const float abs_raw_error_cm = std::fabs(raw_error_cm);
-    const float position_weight = calculateVisionWeight(abs_error_cm);
-    const float d_weight = calculateDWeight(abs_error_cm);
-    const float position_offset_deg = kp_deg_per_cm * error_cm +
-                                      ki_deg_per_cm_s * ball_error_integral_cm_s;
-    const float brake_offset_deg = -kd_deg_per_cm_s * control_velocity_cm_s;
-    const float direction = (target_motion_direction != 0.0f)
-                                ? target_motion_direction
-                                : ((raw_error_cm >= 0.0f) ? 1.0f : -1.0f);
-    const bool before_target_in_motion_direction = (raw_error_cm * direction) > 0.0f;
-    const float v_toward_target_cm_s = velocity_cm_s * direction;
-    const bool past_target_in_motion_direction = (raw_error_cm * direction) < 0.0f;
-    const bool moving_away_after_target =
-        past_target_in_motion_direction && (v_toward_target_cm_s > vx_deadband_cm_s);
-    const bool terminal_brake_gate =
-        (std::fabs(raw_error_cm) <= terminal_brake_x_window_cm) &&
-        (std::fabs(velocity_cm_s) <= terminal_brake_vx_window_cm_s);
-    // The terminal contract is intentionally simple: BPUSH is the only
-    // correction path once the ball has nearly stopped.  The historical
-    // BTRIM controller has been removed.
-    const bool positive_move = direction >= 0.0f;
-    const float push_window_cm = positive_move ? terminal_push_pos_window_cm : terminal_push_neg_window_cm;
-    const float push_vx_window_cm_s = positive_move ? terminal_push_pos_vx_window_cm_s : terminal_push_neg_vx_window_cm_s;
-    const float push_delta_angle_deg = positive_move ? terminal_push_pos_kp_deg_per_cm : terminal_push_neg_kp_deg_per_cm;
-    const bool bpush_configured = (push_window_cm > 0.0f) &&
-                                  (push_delta_angle_deg > 0.0f);
-    const float terminal_correction_window_cm = bpush_configured ? push_window_cm : 0.0f;
-    const float terminal_correction_vx_window_cm_s = bpush_configured ? push_vx_window_cm_s : 0.0f;
-    if ((terminal_correction_window_cm <= 0.0f) ||
-        (abs_raw_error_cm > (terminal_correction_window_cm + 0.35f))) {
-        terminal_correction_latched = false;
-    } else if ((abs_raw_error_cm <= terminal_correction_window_cm) &&
-               (std::fabs(velocity_cm_s) <= terminal_correction_vx_window_cm_s)) {
-        terminal_correction_latched = true;
-    }
-    const bool terminal_correction_gate =
-        (terminal_correction_window_cm > 0.0f) &&
-        (std::fabs(raw_error_cm) <= terminal_correction_window_cm) &&
-        ((std::fabs(velocity_cm_s) <= terminal_correction_vx_window_cm_s) ||
-         terminal_correction_latched);
-    const float brake_target_x_cm = target_x_cm - brake_p_margin_cm * direction;
-    const float brake_region_cm = (state.x_cm - brake_target_x_cm) * direction;
-    const bool stalled_before_terminal =
-        (std::fabs(raw_error_cm) > terminal_brake_x_window_cm) &&
-        (std::fabs(velocity_cm_s) <= vx_deadband_cm_s) &&
-        (brake_region_cm > 0.0f);
-    float brake_p_offset_deg = 0.0f;
-
-    if (brake_p_active && (brake_p_active_direction != direction)) {
-        brake_p_active = false;
-        brake_p_active_direction = 0.0f;
-    }
-
-    if ((brake_p_kp_deg_per_cm <= 0.0f) ||
-        (target_motion_direction == 0.0f) ||
-        (!(before_target_in_motion_direction || moving_away_after_target)) ||
-        terminal_brake_gate ||
-        terminal_correction_gate ||
-        stalled_before_terminal ||
-        (brake_region_cm <= 0.0f)) {
-        brake_p_active = false;
-        brake_p_active_direction = 0.0f;
-    } else if (v_toward_target_cm_s > vx_deadband_cm_s) {
-        brake_p_active = true;
-        brake_p_active_direction = direction;
-    }
-
-    if (brake_p_active) {
-        const float distance_brake_deg = brake_p_kp_deg_per_cm * brake_region_cm;
-        const float speed_excess_cm_s = std::max(0.0f,
-                                                 v_toward_target_cm_s - brake_p_speed_target_vx_cm_s);
-        const float speed_brake_deg = std::min(brake_p_speed_kp_deg_per_cm_s * speed_excess_cm_s,
-                                               brake_p_speed_max_angle_deg);
-        const float direction_max_angle_deg =
-            (direction < 0.0f && brake_p_negative_max_angle_override_deg >= 0.0f)
-                ? brake_p_negative_max_angle_override_deg
-                : brake_p_max_angle_deg;
-        brake_p_offset_deg = -direction * std::min(distance_brake_deg + speed_brake_deg,
-                                                   direction_max_angle_deg);
-    }
-
-    float target_terminal_trim_deg = 0.0f;
-    // bpush is symmetric around the target.  It therefore handles both
-    // undershoot (raw_error > 0 for a positive target) and mild overshoot
-    // without a second sign/opposite-direction controller.
-    const bool terminal_push_recovery_allowed =
-        bpush_configured &&
-        (!brake_p_active) &&
-        (abs_raw_error_cm <= push_window_cm) &&
-        (abs_raw_error_cm > terminal_trim_deadband_cm) &&
-        (std::fabs(velocity_cm_s) <= push_vx_window_cm_s);
-    if (terminal_push_recovery_allowed) {
-        const float error_sign = (raw_error_cm >= 0.0f) ? 1.0f : -1.0f;
-        // BPUSH angle sign follows the positional error directly.  The
-        // measured motor/beam response has one global angle polarity; it
-        // does not need an extra target-motion-direction factor.  Keeping
-        // that factor would reverse the push sign for the negative target.
-        target_terminal_trim_deg = error_sign * push_delta_angle_deg;
-    }
-    last_brake_p_active = brake_p_active;
-    last_brake_p_offset_deg = brake_p_offset_deg;
-    last_terminal_push_active = terminal_push_recovery_allowed;
-    // Kept false for telemetry compatibility; BTRIM no longer exists.
-    last_terminal_trim_active = false;
-    last_terminal_brake_gate_active = terminal_brake_gate;
-    last_stalled_before_terminal = stalled_before_terminal;
-
-    if (terminal_push_recovery_allowed) {
-        // BPUSH is a friction-breakaway impulse.  Apply the configured
-        // fixed offset immediately; do not turn it into a slow trim loop.
-        last_terminal_trim_deg = target_terminal_trim_deg;
-    } else if (bpush_configured) {
-        // Once the ball moves or leaves the recovery window, hand control
-        // back to BBP immediately; do not leave a stale push offset behind.
+    if (task_control_mode == BallBeamTaskProfile::ControlMode::PositionVelocity) {
+        if (velocity_test) {
+            const float speed_error_cm_s = velocity_test_command_cm_s - state.vx_cm_s;
+            const float p_deg = velocity_test_kp_deg_per_cm_s * speed_error_cm_s;
+            const float measured_accel_cm_s2 = (velocity_test_has_previous_v && dt_s > 0.0f)
+                ? (state.vx_cm_s - velocity_test_previous_v_cm_s) / dt_s : 0.0f;
+            velocity_test_previous_v_cm_s = state.vx_cm_s;
+            velocity_test_has_previous_v = true;
+            velocity_test_d_filtered_cm_s2 =
+                0.75f * velocity_test_d_filtered_cm_s2 + 0.25f * measured_accel_cm_s2;
+            const float d_deg = -velocity_test_kd_deg_s_per_cm_s *
+                velocity_test_d_filtered_cm_s2;
+            const float candidate_i_deg = std::clamp(
+                velocity_integral_deg + velocity_test_ki_deg_per_cm *
+                    speed_error_cm_s * dt_s,
+                -2.5f, 2.5f);
+            const float candidate_feedback_deg = p_deg + candidate_i_deg + d_deg;
+            if ((candidate_feedback_deg <= 7.0f || speed_error_cm_s < 0.0f) &&
+                (candidate_feedback_deg >= -7.0f || speed_error_cm_s > 0.0f)) {
+                velocity_integral_deg = candidate_i_deg;
+            }
+            const float feedback_deg = std::clamp(
+                p_deg + velocity_integral_deg + d_deg, -7.0f, 7.0f);
+            last_angle_cmd_rad = std::clamp(
+                angle_reference_rad + feedback_deg * kDegToRad,
+                angle_reference_rad - max_angle_delta_deg * kDegToRad,
+                angle_reference_rad + max_angle_delta_deg * kDegToRad);
+            last_error_cm = 0.0f;
+            last_brake_p_offset_deg = 0.0f;
+            last_terminal_trim_deg = 0.0f;
+            last_brake_p_active = false;
+            last_terminal_push_active = false;
+            last_terminal_trim_active = false;
+            last_terminal_brake_gate_active = false;
+            last_stalled_before_terminal = false;
+            taskENTER_CRITICAL();
+            last_control_input = {now_ms, state.x_cm, state.vx_cm_s,
+                                  velocity_test_command_cm_s};
+            has_last_control_input = true;
+            taskEXIT_CRITICAL();
+            if (std::fabs(last_angle_cmd_rad - last_sent_angle_cmd_rad) >=
+                angle_cmd_deadband_deg * kDegToRad) {
+                last_sent_angle_cmd_rad = last_angle_cmd_rad;
+                Ctrl(CtrlType::AngleCtrl, last_sent_angle_cmd_rad);
+            }
+            return;
+        }
+        // Outer position loop asks for a bounded speed; inner speed loop
+        // converts speed error into a bounded angle correction.  Use the
+        // estimator velocity already supplied to this 20 ms control update.
+        const auto& gains = position_velocity_gains;
+        const float position_p_cm_s = gains.position_kp_per_s * error_cm;
+        const float position_d_cm_s = -gains.position_kd * state.vx_cm_s;
+        const float proposed_position_integral = std::clamp(
+            position_integral_cm_s + error_cm * dt_s, -10.0f, 10.0f);
+        const float proposed_target_v = position_p_cm_s + position_d_cm_s +
+            gains.position_ki_per_s2 * proposed_position_integral;
+        if (!((proposed_target_v > gains.max_target_velocity_cm_s && error_cm > 0.0f) ||
+              (proposed_target_v < -gains.max_target_velocity_cm_s && error_cm < 0.0f))) {
+            position_integral_cm_s = proposed_position_integral;
+        }
+        const float target_velocity_cm_s = std::clamp(
+            position_p_cm_s + position_d_cm_s +
+                gains.position_ki_per_s2 * position_integral_cm_s,
+            -gains.max_target_velocity_cm_s,
+            gains.max_target_velocity_cm_s);
+        const float velocity_error_cm_s = target_velocity_cm_s - state.vx_cm_s;
+        const float measured_accel_cm_s2 = (velocity_test_has_previous_v && dt_s > 0.0f)
+            ? (state.vx_cm_s - velocity_test_previous_v_cm_s) / dt_s : 0.0f;
+        velocity_test_previous_v_cm_s = state.vx_cm_s;
+        velocity_test_has_previous_v = true;
+        velocity_test_d_filtered_cm_s2 =
+            0.75f * velocity_test_d_filtered_cm_s2 + 0.25f * measured_accel_cm_s2;
+        const float velocity_d_deg = -gains.velocity_kd_deg_s_per_cm_s *
+            velocity_test_d_filtered_cm_s2;
+        const float feedforward_deg = target_x_cm *
+            ((target_x_cm >= 0.0f) ? target_feedforward_pos_deg_per_cm
+                                   : target_feedforward_neg_deg_per_cm);
+        const float abs_error_cm = std::fabs(error_cm);
+        const float abs_speed_cm_s = std::fabs(state.vx_cm_s);
+        const float error_weight = std::clamp(
+            (gains.integral_zero_error_cm - abs_error_cm) /
+                std::max(0.001f, gains.integral_zero_error_cm - gains.integral_full_error_cm),
+            0.0f, 1.0f);
+        const float speed_weight = std::clamp(
+            (gains.integral_zero_speed_cm_s - abs_speed_cm_s) /
+                std::max(0.001f, gains.integral_zero_speed_cm_s - gains.integral_full_speed_cm_s),
+            0.0f, 1.0f);
+        const float integral_weight = (error_cm != 0.0f &&
+            (!gains.integral_negative_target_only || target_x_cm < 0.0f))
+                ? error_weight * speed_weight : 0.0f;
+        if (integral_weight == 0.0f) {
+            velocity_integral_deg *= std::clamp(
+                1.0f - gains.integral_leak_per_s * dt_s, 0.0f, 1.0f);
+        }
+        const float candidate_integral_deg = std::clamp(
+            velocity_integral_deg + gains.velocity_ki_deg_per_cm * velocity_error_cm_s *
+                integral_weight * dt_s,
+            -gains.max_velocity_integral_deg,
+            gains.max_velocity_integral_deg);
+        const float candidate_feedback_deg =
+            gains.velocity_kp_deg_per_cm_s * velocity_error_cm_s +
+            candidate_integral_deg + velocity_d_deg;
+        const float candidate_total_deg = feedforward_deg + candidate_feedback_deg;
+        // Do not integrate further in the direction of either angle limit.
+        const bool pushing_upper_limit = (velocity_error_cm_s > 0.0f) &&
+            ((candidate_feedback_deg > gains.max_feedback_angle_deg) ||
+             (candidate_total_deg > max_angle_delta_deg));
+        const bool pushing_lower_limit = (velocity_error_cm_s < 0.0f) &&
+            ((candidate_feedback_deg < -gains.max_feedback_angle_deg) ||
+             (candidate_total_deg < -max_angle_delta_deg));
+        if (!pushing_upper_limit && !pushing_lower_limit) {
+            velocity_integral_deg = candidate_integral_deg;
+        }
+        const float feedback_deg = std::clamp(
+            gains.velocity_kp_deg_per_cm_s * velocity_error_cm_s +
+                velocity_integral_deg + velocity_d_deg,
+            -gains.max_feedback_angle_deg,
+            gains.max_feedback_angle_deg);
+        last_angle_cmd_rad = std::clamp(
+            angle_reference_rad + (feedforward_deg + feedback_deg) * kDegToRad,
+            angle_reference_rad - max_angle_delta_deg * kDegToRad,
+            angle_reference_rad + max_angle_delta_deg * kDegToRad);
+        last_error_cm = error_cm;
+        last_brake_p_offset_deg = 0.0f;
         last_terminal_trim_deg = 0.0f;
-    } else {
-        last_terminal_trim_deg = 0.0f;
-    }
-
-    const float target_feedforward_eff_deg_per_cm =
-        (target_x_cm >= 0.0f) ? target_feedforward_pos_deg_per_cm : target_feedforward_neg_deg_per_cm;
-    const float angle_offset_deg = target_feedforward_eff_deg_per_cm * target_x_cm +
-                                   position_weight * position_offset_deg +
-                                   d_weight * brake_offset_deg +
-                                   brake_p_offset_deg +
-                                   last_terminal_trim_deg;
-
-    last_angle_cmd_rad = std::clamp(angle_reference_rad + angle_offset_deg * kDegToRad,
-                                    min_angle_rad,
-                                    max_angle_rad);
-    previous_previous_error_cm = previous_error_cm;
-    previous_error_cm = error_cm;
-    has_incremental_pid_history = true;
-    const float angle_cmd_delta_rad = last_angle_cmd_rad - last_sent_angle_cmd_rad;
-    if (std::fabs(angle_cmd_delta_rad) < (angle_cmd_deadband_deg * kDegToRad)) {
+        last_brake_p_active = false;
+        last_terminal_push_active = false;
+        last_terminal_trim_active = false;
+        last_terminal_brake_gate_active = false;
+        last_stalled_before_terminal = false;
+        taskENTER_CRITICAL();
+        last_control_input = {now_ms, state.x_cm, state.vx_cm_s, target_velocity_cm_s};
+        has_last_control_input = true;
+        taskEXIT_CRITICAL();
+        if (std::fabs(last_angle_cmd_rad - last_sent_angle_cmd_rad) >=
+            angle_cmd_deadband_deg * kDegToRad) {
+            last_sent_angle_cmd_rad = last_angle_cmd_rad;
+            Ctrl(CtrlType::AngleCtrl, last_sent_angle_cmd_rad);
+        }
         return;
     }
 
-    last_sent_angle_cmd_rad = last_angle_cmd_rad;
-    Ctrl(CtrlType::AngleCtrl, last_sent_angle_cmd_rad);
 }
 
 

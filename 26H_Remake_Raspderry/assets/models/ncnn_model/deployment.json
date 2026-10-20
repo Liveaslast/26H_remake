@@ -1,0 +1,20 @@
+{
+  "schema": "steel-ball-roi-ncnn-export/v1",
+  "created_utc": "2026-09-12T11:06:09.013810+00:00",
+  "ultralytics_version": "8.4.142",
+  "source_model": "D:\\26H-remake\\26H_Remake_Vision\\best\\model\\best.pt",
+  "generated_directory": "D:\\26H-remake\\26H_Remake_Vision\\best\\model\\best_ncnn_model",
+  "deployment_directory": "D:\\26H-remake\\26H_Remake_Vision\\best\\model\\ncnn_model",
+  "input_height": 128,
+  "input_width": 640,
+  "geometry_id": "b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad",
+  "model_geometry": {
+    "schema": "steel-ball-model-geometry/v1",
+    "geometry_id": "b5db7d686fc483d125f523499dbbdb9bc71a2d9a2b7f9709992a53b8174de5ad",
+    "input_height": 128,
+    "input_width": 640,
+    "dataset_manifest": "D:\\26H-remake\\26H_Remake_Vision\\best\\algorithm\\train\\datasets\\roi_ball_128x640_angle12\\manifest.json"
+  },
+  "smoke_image": null,
+  "smoke_detections_at_conf_0_05": null
+}

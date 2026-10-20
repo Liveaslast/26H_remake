@@ -37,6 +37,7 @@ set(OLD_GLOB
   "D:/26H-remake/26H_Remake_DJC/APP/src/DebugTask.cpp"
   "D:/26H-remake/26H_Remake_DJC/APP/src/GimbalTask.cpp"
   "D:/26H-remake/26H_Remake_DJC/APP/src/Motortest.cpp"
+  "D:/26H-remake/26H_Remake_DJC/APP/src/PiControl.cpp"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   message("-- GLOB mismatch!")

@@ -239,6 +239,15 @@ void Serial_ClearRxOverflow(void)
     Serial_RxOverflow = 0U;
 }
 
+void Serial_DiscardRxBuffer(void)
+{
+    uint32_t primask = Serial_EnterCritical();
+    Serial_RxTail = Serial_RxHead;
+    Serial_RxFlag = 0U;
+    Serial_RxOverflow = 0U;
+    Serial_ExitCritical(primask);
+}
+
 uint8_t Serial_GetTxOverflow(void)
 {
     return Serial_TxOverflow;
