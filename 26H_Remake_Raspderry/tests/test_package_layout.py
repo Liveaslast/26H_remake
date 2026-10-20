@@ -18,6 +18,7 @@ from ballbeam.recording.csv_writer import CsvWriter
 from ballbeam.vision.angles import AngleHistory, FrameAngleSource
 from ballbeam.vision.calibration import require_matching_source_roi
 from ballbeam.vision.metrics import VisionStats
+from ballbeam.vision.tracker import CandidateSelector, TrackingState, DynamicBallTracker
 
 
 ROOT = Path(ballbeam.__file__).parent
@@ -36,6 +37,7 @@ class PackageLayoutTests(unittest.TestCase):
             "vision.angles": [AngleHistory, FrameAngleSource],
             "vision.calibration": [require_matching_source_roi],
             "vision.metrics": [VisionStats],
+            "vision.tracker": [CandidateSelector, TrackingState, DynamicBallTracker],
         }
         for module, components in owners.items():
             for component in components:
@@ -56,6 +58,12 @@ class PackageLayoutTests(unittest.TestCase):
                 self.assertFalse((ROOT / relative).exists())
                 module = "ballbeam." + relative[:-3].replace("/", ".")
                 self.assertIsNone(importlib.util.find_spec(module))
+
+    def test_unused_pi_control_implementation_is_removed(self):
+        self.assertFalse((ROOT / "control/balance.py").exists())
+        self.assertFalse((ROOT / "control/__init__.py").exists())
+        if importlib.util.find_spec("ballbeam.control") is not None:
+            self.assertIsNone(importlib.util.find_spec("ballbeam.control.balance"))
 
     def test_lower_layers_do_not_import_application_or_unrelated_services(self):
         forbidden = {

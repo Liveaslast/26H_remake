@@ -25,6 +25,8 @@
 
 `../vision/detection_runtime/detector.py` 中保留四个独立组件，不按代码片段拆文件：`ModelInference` 管理后端及预测结果整理，`OpticalFlowTracker` 管理光流状态，`CircleRefinementCache` 管理圆拟合关联与复用，`AdaptiveBallDetector` 只协调检测周期和这些组件。共享尺寸及 letterbox 预处理归 `preprocessing.py`，不归任何具体后端。
 
+视觉节点详见 [vision/README.md](../vision/README.md)。`tracker.py` 中 CandidateSelector 管候选筛选与物理坐标，TrackingState 管时序状态，DynamicBallTracker 只调用节点并交付结果；绘图归 interfaces/presentation.py。检测节点支持显式注入 inference、flow、refinement，跟踪节点支持 selector、state。未使用的 Pi control 包源码已删除，电机闭环仍在 MCU。
+
 `CaptureSession.finish_if_needed()` 只关闭采集并返回是否刚结束；`main` 根据返回值解除通信回调、调用报告接口。CSV 记录器不修改客户端，不内嵌 SCP 地址或本地目录。
 
 ## 模式与任务

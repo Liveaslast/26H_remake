@@ -25,7 +25,7 @@ python3 best/run.py --port /dev/ttyUSB0 --inference-backend hailort --debug-page
 | 位置 | 内容 |
 |---|---|
 | `ballbeam/app/` | 入口、参数、组件组装、任务启动和逐帧流程；调用通信接口提交最新视觉数据 |
-| `ballbeam/vision/` | 标定、追踪、检测与 HailoRT 后端 |
+| `ballbeam/vision/` | 标定、像素检测、候选选择、时序状态与最终视觉输出；工作链及节点接口见 [视觉说明](ballbeam/vision/README.md) |
 | `ballbeam/hardware/camera.py` | 相机参数、设备设置与最新帧采集 |
 | `ballbeam/hardware/serial_config.py` | 串口端口、波特率和读写超时参数 |
 | `ballbeam/communication/protocol.py` | 六种帧的定义、CRC、打包和解包；独立 FrameDecoder 类负责半帧累积、粘帧拆分和重新定位 |

@@ -134,6 +134,24 @@ class DetectorComponentTests(unittest.TestCase):
         self.assertEqual(detector.detect(self.frame).frame_index, 1)
         self.assertEqual(backend.predict.call_count, 2)
 
+    def test_pipeline_accepts_independent_stages_without_loading_backend(self):
+        inference, flow, refinement = Mock(), Mock(), Mock()
+        template = AdaptiveBallDetector(replace(self.config, enable_circle_refinement=False),
+                                       model=model(Boxes([[10, 20, 30, 40]])))
+        detection = template.detect(self.frame)
+        inference.predict.return_value = ([], detection.timings)
+        refinement.refine.return_value = detection
+        flow.track.return_value = replace(detection, frame_source="tracked")
+        config = replace(self.config, detection_interval=2)
+        with patch("ballbeam.vision.detection_runtime.detector.ModelInference") as create_backend:
+            detector = AdaptiveBallDetector(config, inference=inference, flow=flow, refinement=refinement)
+            self.assertEqual(detector.detect(self.frame).frame_source, "detected")
+            self.assertEqual(detector.detect(self.frame).frame_source, "tracked")
+        create_backend.assert_not_called()
+        self.assertEqual(inference.predict.call_count, 1)
+        flow.initialize.assert_called_once()
+        refinement.refine.assert_called_once()
+
     def test_uninitialized_flow_reports_failure_without_inference(self):
         flow = OpticalFlowTracker(self.config)
         result = flow.track(self.frame, 7)

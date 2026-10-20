@@ -5,9 +5,11 @@ import math
 from typing import Any
 
 import cv2
+import numpy as np
 
 from ..errors import RuntimeIOError
-from ..vision.tracker import DynamicTrackingResult, draw_tracking_overlay
+from ..vision.tracker import DynamicTrackingResult
+from ..vision.calibration import DynamicCalibrationError
 
 
 class VisionReporter:
@@ -239,3 +241,107 @@ def report_capture_finished(control):
         "视觉继续运行，按 Ctrl+C 后手动复位下位机。",
         flush=True,
     )
+
+
+def draw_tracking_overlay(
+    result: DynamicTrackingResult,
+    *,
+    fps: float | None = None,
+) -> np.ndarray | None:
+    """在动态展开图上绘制测量、预测和安全状态。"""
+
+    if result.rectified is None:
+        return None
+    roi = result.rectified.copy()
+    color = (0, 220, 0) if result.tracking_valid else (0, 0, 255)
+
+    if result.box_xyxy is not None:
+        x1, y1, x2, y2 = result.box_xyxy
+        cv2.rectangle(
+            roi,
+            (int(round(x1)), int(round(y1))),
+            (int(round(x2)), int(round(y2))),
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+    if result.center_px is not None:
+        center = tuple(int(round(value)) for value in result.center_px)
+        radius = max(3, int(round(result.radius_px or 3.0)))
+        cv2.circle(roi, center, radius, color, 2, cv2.LINE_AA)
+        cv2.drawMarker(
+            roi,
+            center,
+            (0, 0, 255),
+            cv2.MARKER_CROSS,
+            14,
+            2,
+            cv2.LINE_AA,
+        )
+    elif (
+        result.position_cm is not None
+        and result.rectification is not None
+    ):
+        try:
+            u = result.rectification.cm_to_pixel(
+                result.position_cm,
+                (0.0, float(roi.shape[1] - 1)),
+            )
+            cv2.line(
+                roi,
+                (int(round(u)), 0),
+                (int(round(u)), roi.shape[0] - 1),
+                (255, 180, 0),
+                1,
+                cv2.LINE_AA,
+            )
+        except DynamicCalibrationError:
+            pass
+
+    display_position = (
+        result.measurement_position_cm
+        if result.measurement_valid and result.measurement_position_cm is not None
+        else result.position_cm
+    )
+    position = (
+        "none"
+        if display_position is None
+        else f"{display_position:+.3f}cm"
+    )
+    velocity = (
+        "none"
+        if result.velocity_cm_s is None
+        else f"{result.velocity_cm_s:+.2f}cm/s"
+    )
+    angle = (
+        "none"
+        if result.actual_angle_deg is None
+        else f"{result.actual_angle_deg:+.2f}deg"
+    )
+    fps_text = "warming" if fps is None else f"{fps:.1f}"
+    lines = (
+        f"x={position}  vx={velocity}  angle={angle}",
+        (
+            f"valid={result.tracking_valid} "
+            f"measurement={result.measurement_valid} "
+            f"source={result.source} conf={result.confidence:.2f}"
+        ),
+        (
+            f"reason={result.reason} infer={result.inference_ms:.1f}ms "
+            f"total={result.processing_ms:.1f}ms fps={fps_text}"
+        ),
+    )
+    panel_height = 72
+    panel = np.zeros((panel_height, roi.shape[1], 3), dtype=np.uint8)
+    for index, line in enumerate(lines):
+        cv2.putText(
+            panel,
+            line,
+            (8, 20 + index * 23),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.52,
+            color if index == 1 else (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+    return np.vstack((panel, roi))

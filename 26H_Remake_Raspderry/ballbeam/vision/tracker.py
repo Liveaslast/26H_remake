@@ -1,4 +1,4 @@
-"""动态展开后的YOLO/RANSAC钢球关联和一维状态估计核心。"""
+"""视觉处理链：展开、检测、候选选择、时序状态和结果交付。"""
 
 from __future__ import annotations
 
@@ -7,12 +7,10 @@ import math
 import time
 from typing import Any, Literal, Protocol
 
-import cv2
 import numpy as np
 
 from .calibration import (
     DynamicCalibration,
-    DynamicCalibrationError,
     RectificationState,
 )
 from .estimator import ConstantVelocityKalman, FirstOrderLowPass
@@ -133,7 +131,7 @@ class DynamicTrackingResult:
 
 
 @dataclass(frozen=True, slots=True)
-class _Candidate:
+class BallMeasurement:
     detection: Any
     position_cm: float
     score: float
@@ -142,60 +140,12 @@ class _Candidate:
     radius_px: float
 
 
-class DynamicBallTracker:
-    """角度动态展开、YOLO候选筛选和卡尔曼状态估计。"""
+class CandidateSelector:
+    """Select one physical ball measurement from pixel-space detections."""
 
-    def __init__(
-        self,
-        calibration: DynamicCalibration,
-        detector: DetectorProtocol,
-        config: DynamicTrackerConfig | None = None,
-    ) -> None:
+    def __init__(self, calibration, config):
         self.calibration = calibration
-        self.detector = detector
-        self.config = config or DynamicTrackerConfig()
-        self.kalman = ConstantVelocityKalman(
-            self.config.process_acceleration_std_cm_s2,
-            initial_position_std_cm=(
-                self.config.kalman_initial_position_std_cm
-            ),
-            initial_velocity_std_cm_s=(
-                self.config.kalman_initial_velocity_std_cm_s
-            ),
-            minimum_dt_seconds=self.config.kalman_minimum_dt_seconds,
-            maximum_dt_seconds=self.config.kalman_maximum_dt_seconds,
-        )
-        self.velocity_lowpass = FirstOrderLowPass(
-            self.config.velocity_lowpass_tau_seconds
-        )
-        self._last_measurement_timestamp: float | None = None
-        self._consecutive_hits = 0
-        self._confirmed = False
-        self._last_result_timestamp: float | None = None
-
-    def reset(self) -> None:
-        self.kalman.reset()
-        self.velocity_lowpass.reset()
-        self._last_measurement_timestamp = None
-        self._consecutive_hits = 0
-        self._confirmed = False
-        self._last_result_timestamp = None
-
-    def _output_velocity(self, timestamp: float) -> float | None:
-        velocity = self.kalman.velocity_cm_s
-        if velocity is None:
-            self.velocity_lowpass.reset()
-            return None
-        return self.velocity_lowpass.update(velocity, timestamp)
-
-    def _acceleration_from_angle(self, angle_deg: float) -> float:
-        # gain 的符号取决于角度和 x 轴定义，默认 0 表示关闭。理论纯滚动
-        # 实心球可从约 5/7 开始在台架上辨识。
-        return (
-            self.config.gravity_model_gain
-            * 980.665
-            * math.sin(math.radians(float(angle_deg)))
-        )
+        self.config = config
 
     def _position_limits(
         self,
@@ -210,30 +160,28 @@ class DynamicBallTracker:
         margin = self.config.physical_range_margin_cm
         return low - margin, high + margin
 
-    def _select_candidate(
+    def select(
         self,
         detections: Any,
         state: RectificationState,
-        timestamp: float,
-    ) -> _Candidate | None:
+        *,
+        predicted_position: float | None = None,
+        lost_seconds: float | None = None,
+    ) -> BallMeasurement | None:
         height = self.calibration.canonical_size[1]
         y_low = self.config.vertical_band_min * height
         y_high = self.config.vertical_band_max * height
         radius_max = self.config.maximum_radius_height_ratio * height
         position_low, position_high = self._position_limits(state)
-        predicted = self.kalman.position_cm if self.config.enable_kalman else None
-        lost = (
-            None
-            if self._last_measurement_timestamp is None
-            else timestamp - self._last_measurement_timestamp
-        )
+        predicted = predicted_position
+        lost = lost_seconds
         use_prediction_gate = (
             predicted is not None
             and lost is not None
             and lost <= self.config.maximum_lost_seconds
         )
 
-        candidates: list[_Candidate] = []
+        candidates: list[BallMeasurement] = []
         for detection in getattr(detections, "balls", ()):
             confidence = float(getattr(detection, "confidence", 0.0))
             if (
@@ -284,7 +232,7 @@ class DynamicBallTracker:
                 )
             )
             candidates.append(
-                _Candidate(
+                BallMeasurement(
                     detection=detection,
                     position_cm=position,
                     score=confidence + refinement_bonus - distance_penalty,
@@ -320,277 +268,181 @@ class DynamicBallTracker:
                     return max(0.0, min(abs(x2 - x1), abs(y2 - y1)) * 0.5)
         return float(getattr(detection, "radius_px", 0.0))
 
-    def _lost_seconds(self, timestamp: float) -> float | None:
+
+@dataclass(frozen=True, slots=True)
+class TrackingStatus:
+    position_cm: float | None
+    velocity_cm_s: float | None
+    tracking_valid: bool
+    lost_seconds: float | None
+    source: TrackingSource
+    reason: str
+
+
+class TrackingState:
+    """Own confirmation, loss history and the existing optional state estimator."""
+
+    def __init__(self, config):
+        self.config = config
+        self.kalman = (
+            ConstantVelocityKalman(
+                config.process_acceleration_std_cm_s2,
+                initial_position_std_cm=config.kalman_initial_position_std_cm,
+                initial_velocity_std_cm_s=config.kalman_initial_velocity_std_cm_s,
+                minimum_dt_seconds=config.kalman_minimum_dt_seconds,
+                maximum_dt_seconds=config.kalman_maximum_dt_seconds,
+            ) if config.enable_kalman else None
+        )
+        self.velocity_lowpass = (
+            FirstOrderLowPass(config.velocity_lowpass_tau_seconds)
+            if config.enable_kalman else None
+        )
+        self.reset()
+
+    def reset(self):
+        if self.kalman is not None:
+            self.kalman.reset()
+            self.velocity_lowpass.reset()
+        self._last_measurement_timestamp = None
+        self._consecutive_hits = 0
+        self._confirmed = False
+        self._last_result_timestamp = None
+
+    def begin_frame(self, timestamp):
+        if self._last_result_timestamp is not None and timestamp < self._last_result_timestamp - 1e-9:
+            raise ValueError("输入帧时间戳不能倒退")
+        self._last_result_timestamp = timestamp
+
+    @property
+    def predicted_position(self):
+        return self.kalman.position_cm if self.kalman is not None else None
+
+    def lost_seconds(self, timestamp):
         if self._last_measurement_timestamp is None:
             return None
         return max(0.0, timestamp - self._last_measurement_timestamp)
 
-    def process(
-        self,
-        frame: np.ndarray,
-        actual_angle_deg: float,
-        timestamp: float,
-    ) -> DynamicTrackingResult:
-        started = time.perf_counter()
-        current = float(timestamp)
-        if (
-            self._last_result_timestamp is not None
-            and current < self._last_result_timestamp - 1e-9
-        ):
-            raise ValueError("输入帧时间戳不能倒退")
-        self._last_result_timestamp = current
+    def predict(self, timestamp, angle_deg=None):
+        if self.kalman is not None:
+            acceleration = 0.0 if angle_deg is None else self._acceleration_from_angle(angle_deg)
+            self.kalman.predict(timestamp, acceleration)
 
-        rectified, state = self.calibration.rectify(
-            frame,
-            actual_angle_deg,
-        )
-        if self.config.enable_kalman:
-            self.kalman.predict(
-                current,
-                self._acceleration_from_angle(actual_angle_deg),
-            )
-        detections = self.detector.detect(rectified)
-        candidate = self._select_candidate(detections, state, current)
+    def _acceleration_from_angle(self, angle_deg):
+        # gain 的符号取决于角度和 x 轴定义，默认 0 表示关闭。理论纯滚动
+        # 实心球可从约 5/7 开始在台架上辨识。
+        return self.config.gravity_model_gain * 980.665 * math.sin(math.radians(float(angle_deg)))
 
-        if candidate is not None:
-            detection = candidate.detection
-            if self.config.enable_kalman:
-                previous_lost = self._lost_seconds(current)
-                if (
-                    previous_lost is not None
-                    and previous_lost > self.config.reset_after_seconds
-                ):
-                    self.kalman.reset(candidate.position_cm, current)
-                    self.velocity_lowpass.reset()
-                    self._consecutive_hits = 1
-                    self._confirmed = self.config.confirmation_hits == 1
-                else:
-                    source_text = str(getattr(detection, "source", "yolo_box"))
-                    base_std = (
-                        self.config.ransac_measurement_std_cm
-                        if source_text in {"ransac", "cached_ransac"}
-                        else self.config.yolo_measurement_std_cm
-                    )
-                    confidence = max(
-                        self.config.minimum_confidence,
-                        float(getattr(detection, "confidence", 0.0)),
-                    )
-                    measurement_std = base_std / math.sqrt(confidence)
-                    self.kalman.update(candidate.position_cm, measurement_std)
-                    self._consecutive_hits += 1
-                    if self._consecutive_hits >= self.config.confirmation_hits:
-                        self._confirmed = True
-                output_position = self.kalman.position_cm
-                output_velocity = self._output_velocity(current)
+    def _velocity(self, timestamp):
+        if self.kalman is None:
+            return 0.0
+        velocity = self.kalman.velocity_cm_s
+        if velocity is None:
+            self.velocity_lowpass.reset()
+            return None
+        return self.velocity_lowpass.update(velocity, timestamp)
+
+    def _reset_stale_estimate(self, timestamp, lost):
+        if self.kalman is not None and lost is not None and lost > self.config.reset_after_seconds:
+            self.kalman.reset(timestamp=timestamp)
+            self.velocity_lowpass.reset()
+            self._confirmed = False
+
+    def observe(self, measurement, timestamp):
+        if measurement is None:
+            self._consecutive_hits = 0
+            lost = self.lost_seconds(timestamp)
+            valid = self._confirmed and lost is not None and lost <= self.config.maximum_lost_seconds
+            self._reset_stale_estimate(timestamp, lost)
+            if self.kalman is not None and lost is not None and lost > self.config.reset_after_seconds:
+                valid = False
+            return TrackingStatus(self.predicted_position, self._velocity(timestamp), valid,
+                                  lost, "prediction" if valid else "none",
+                                  "short-prediction" if valid else "ball-not-detected")
+
+        if self.kalman is not None:
+            lost = self.lost_seconds(timestamp)
+            if lost is not None and lost > self.config.reset_after_seconds:
+                self.kalman.reset(measurement.position_cm, timestamp)
+                self.velocity_lowpass.reset()
+                self._consecutive_hits = 1
+                self._confirmed = self.config.confirmation_hits == 1
             else:
+                source = str(getattr(measurement.detection, "source", "yolo_box"))
+                base_std = (self.config.ransac_measurement_std_cm
+                            if source in {"ransac", "cached_ransac"} else self.config.yolo_measurement_std_cm)
+                confidence = max(self.config.minimum_confidence,
+                                 float(getattr(measurement.detection, "confidence", 0.0)))
+                self.kalman.update(measurement.position_cm, base_std / math.sqrt(confidence))
                 self._consecutive_hits += 1
                 if self._consecutive_hits >= self.config.confirmation_hits:
                     self._confirmed = True
-                output_position = candidate.position_cm
-                output_velocity = 0.0
+            position, velocity = self.predicted_position, self._velocity(timestamp)
+        else:
+            self._consecutive_hits += 1
+            if self._consecutive_hits >= self.config.confirmation_hits:
+                self._confirmed = True
+            position, velocity = measurement.position_cm, 0.0
+        self._last_measurement_timestamp = timestamp
+        return TrackingStatus(position, velocity, self._confirmed, 0.0, measurement.source,
+                              "ok" if self._confirmed else "waiting-for-confirmation")
 
-            self._last_measurement_timestamp = current
-            return DynamicTrackingResult(
-                timestamp=current,
-                position_cm=output_position,
-                velocity_cm_s=output_velocity,
-                actual_angle_deg=float(actual_angle_deg),
-                measurement_valid=True,
-                tracking_valid=self._confirmed,
-                source=candidate.source,
-                confidence=float(getattr(detection, "confidence", 0.0)),
-                lost_seconds=0.0,
-                reason=(
-                    "ok" if self._confirmed else "waiting-for-confirmation"
-                ),
-                center_px=candidate.center_px,
-                radius_px=candidate.radius_px,
-                box_xyxy=tuple(map(float, detection.box_xyxy)),
-                measurement_position_cm=candidate.position_cm,
-                rectified=rectified,
-                rectification=state,
-                inference_ms=float(
-                    getattr(detections, "inference_ms", 0.0)
-                ),
-                refinement_ms=float(
-                    getattr(detections, "refinement_ms", 0.0)
-                ),
-                processing_ms=(time.perf_counter() - started) * 1000.0,
-            )
-
+    def missing_angle(self, timestamp, reason):
+        self.predict(timestamp)
+        lost = self.lost_seconds(timestamp)
+        self._reset_stale_estimate(timestamp, lost)
         self._consecutive_hits = 0
-        lost = self._lost_seconds(current)
-        tracking_valid = (
-            self._confirmed
-            and lost is not None
-            and lost <= self.config.maximum_lost_seconds
-        )
-        if (
-            self.config.enable_kalman
-            and lost is not None
-            and lost > self.config.reset_after_seconds
-        ):
-            self.kalman.reset(timestamp=current)
-            self.velocity_lowpass.reset()
-            self._confirmed = False
-            tracking_valid = False
+        self._last_result_timestamp = timestamp
+        return TrackingStatus(self.predicted_position, self._velocity(timestamp), False, lost, "none", reason)
 
+
+class DynamicBallTracker:
+    """Coordinate geometry, detector, measurement selection and tracking state."""
+
+    def __init__(self, calibration: DynamicCalibration, detector: DetectorProtocol,
+                 config: DynamicTrackerConfig | None = None, *, selector=None, state=None):
+        self.calibration = calibration
+        self.detector = detector
+        self.config = config or DynamicTrackerConfig()
+        self.selector = selector if selector is not None else CandidateSelector(calibration, self.config)
+        self.state = state if state is not None else TrackingState(self.config)
+
+    def reset(self):
+        self.state.reset()
+
+    def process(self, frame: np.ndarray, actual_angle_deg: float, timestamp: float) -> DynamicTrackingResult:
+        started = time.perf_counter()
+        current = float(timestamp)
+        self.state.begin_frame(current)
+        rectified, geometry = self.calibration.rectify(frame, actual_angle_deg)
+        self.state.predict(current, actual_angle_deg)
+        detections = self.detector.detect(rectified)
+        measurement = self.selector.select(
+            detections, geometry, predicted_position=self.state.predicted_position,
+            lost_seconds=self.state.lost_seconds(current),
+        )
+        status = self.state.observe(measurement, current)
         return DynamicTrackingResult(
-            timestamp=current,
-            position_cm=(self.kalman.position_cm if self.config.enable_kalman else None),
-            velocity_cm_s=(self._output_velocity(current) if self.config.enable_kalman else 0.0),
-            actual_angle_deg=float(actual_angle_deg),
-            measurement_valid=False,
-            tracking_valid=tracking_valid,
-            source="prediction" if tracking_valid else "none",
-            confidence=0.0,
-            lost_seconds=lost,
-            reason=(
-                "short-prediction" if tracking_valid else "ball-not-detected"
-            ),
-            rectified=rectified,
-            rectification=state,
+            timestamp=current, position_cm=status.position_cm, velocity_cm_s=status.velocity_cm_s,
+            actual_angle_deg=float(actual_angle_deg), measurement_valid=measurement is not None,
+            tracking_valid=status.tracking_valid, source=status.source,
+            confidence=float(getattr(measurement.detection, "confidence", 0.0)) if measurement else 0.0,
+            lost_seconds=status.lost_seconds, reason=status.reason,
+            center_px=measurement.center_px if measurement else None,
+            radius_px=measurement.radius_px if measurement else None,
+            box_xyxy=tuple(map(float, measurement.detection.box_xyxy)) if measurement else None,
+            measurement_position_cm=measurement.position_cm if measurement else None,
+            rectified=rectified, rectification=geometry,
             inference_ms=float(getattr(detections, "inference_ms", 0.0)),
-            refinement_ms=float(
-                getattr(detections, "refinement_ms", 0.0)
-            ),
+            refinement_ms=float(getattr(detections, "refinement_ms", 0.0)),
             processing_ms=(time.perf_counter() - started) * 1000.0,
         )
 
-    def process_missing_angle(
-        self,
-        timestamp: float,
-        reason: str = "angle-telemetry-stale",
-    ) -> DynamicTrackingResult:
+    def process_missing_angle(self, timestamp: float, reason: str = "angle-telemetry-stale") -> DynamicTrackingResult:
         """角度遥测无效时立即阻止结果进入控制器。"""
-
         current = float(timestamp)
-        if self.config.enable_kalman:
-            self.kalman.predict(current)
-        lost = self._lost_seconds(current)
-        if (
-            self.config.enable_kalman
-            and lost is not None
-            and lost > self.config.reset_after_seconds
-        ):
-            self.kalman.reset(timestamp=current)
-            self.velocity_lowpass.reset()
-            self._confirmed = False
-        self._consecutive_hits = 0
-        self._last_result_timestamp = current
+        status = self.state.missing_angle(current, reason)
         return DynamicTrackingResult(
-            timestamp=current,
-            position_cm=(self.kalman.position_cm if self.config.enable_kalman else None),
-            velocity_cm_s=(self._output_velocity(current) if self.config.enable_kalman else 0.0),
-            actual_angle_deg=None,
-            measurement_valid=False,
-            tracking_valid=False,
-            source="none",
-            confidence=0.0,
-            lost_seconds=lost,
-            reason=reason,
+            timestamp=current, position_cm=status.position_cm, velocity_cm_s=status.velocity_cm_s,
+            actual_angle_deg=None, measurement_valid=False, tracking_valid=status.tracking_valid,
+            source=status.source, confidence=0.0, lost_seconds=status.lost_seconds, reason=status.reason,
         )
-
-
-def draw_tracking_overlay(
-    result: DynamicTrackingResult,
-    *,
-    fps: float | None = None,
-) -> np.ndarray | None:
-    """在动态展开图上绘制测量、预测和安全状态。"""
-
-    if result.rectified is None:
-        return None
-    roi = result.rectified.copy()
-    color = (0, 220, 0) if result.tracking_valid else (0, 0, 255)
-
-    if result.box_xyxy is not None:
-        x1, y1, x2, y2 = result.box_xyxy
-        cv2.rectangle(
-            roi,
-            (int(round(x1)), int(round(y1))),
-            (int(round(x2)), int(round(y2))),
-            color,
-            2,
-            cv2.LINE_AA,
-        )
-    if result.center_px is not None:
-        center = tuple(int(round(value)) for value in result.center_px)
-        radius = max(3, int(round(result.radius_px or 3.0)))
-        cv2.circle(roi, center, radius, color, 2, cv2.LINE_AA)
-        cv2.drawMarker(
-            roi,
-            center,
-            (0, 0, 255),
-            cv2.MARKER_CROSS,
-            14,
-            2,
-            cv2.LINE_AA,
-        )
-    elif (
-        result.position_cm is not None
-        and result.rectification is not None
-    ):
-        try:
-            u = result.rectification.cm_to_pixel(
-                result.position_cm,
-                (0.0, float(roi.shape[1] - 1)),
-            )
-            cv2.line(
-                roi,
-                (int(round(u)), 0),
-                (int(round(u)), roi.shape[0] - 1),
-                (255, 180, 0),
-                1,
-                cv2.LINE_AA,
-            )
-        except DynamicCalibrationError:
-            pass
-
-    display_position = (
-        result.measurement_position_cm
-        if result.measurement_valid and result.measurement_position_cm is not None
-        else result.position_cm
-    )
-    position = (
-        "none"
-        if display_position is None
-        else f"{display_position:+.3f}cm"
-    )
-    velocity = (
-        "none"
-        if result.velocity_cm_s is None
-        else f"{result.velocity_cm_s:+.2f}cm/s"
-    )
-    angle = (
-        "none"
-        if result.actual_angle_deg is None
-        else f"{result.actual_angle_deg:+.2f}deg"
-    )
-    fps_text = "warming" if fps is None else f"{fps:.1f}"
-    lines = (
-        f"x={position}  vx={velocity}  angle={angle}",
-        (
-            f"valid={result.tracking_valid} "
-            f"measurement={result.measurement_valid} "
-            f"source={result.source} conf={result.confidence:.2f}"
-        ),
-        (
-            f"reason={result.reason} infer={result.inference_ms:.1f}ms "
-            f"total={result.processing_ms:.1f}ms fps={fps_text}"
-        ),
-    )
-    panel_height = 72
-    panel = np.zeros((panel_height, roi.shape[1], 3), dtype=np.uint8)
-    for index, line in enumerate(lines):
-        cv2.putText(
-            panel,
-            line,
-            (8, 20 + index * 23),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.52,
-            color if index == 1 else (255, 255, 255),
-            1,
-            cv2.LINE_AA,
-        )
-    return np.vstack((panel, roi))

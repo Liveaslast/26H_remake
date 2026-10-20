@@ -250,7 +250,7 @@ class CommunicationSession:
         self.running = True
         self.decoder.reset()
 
-        # 创建通信线程，线程开始执行_run
+        # 创建通信线程，线程开始通信线程循环_run
         self.thread = threading.Thread(target=self._run, name="McuCommunication", daemon=True)
         self.thread.start()
 

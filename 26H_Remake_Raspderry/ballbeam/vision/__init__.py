@@ -15,7 +15,6 @@ from .tracker import (
     DynamicBallTracker,
     DynamicTrackerConfig,
     DynamicTrackingResult,
-    draw_tracking_overlay,
 )
 
 __all__ = [
@@ -29,7 +28,6 @@ __all__ = [
     "RectificationState",
     "compute_homography",
     "destination_corners",
-    "draw_tracking_overlay",
     "fit_position_polynomial",
     "order_quad_points",
 ]

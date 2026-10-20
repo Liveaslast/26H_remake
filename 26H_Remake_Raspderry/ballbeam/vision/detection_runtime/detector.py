@@ -1,4 +1,4 @@
-"""YOLO detector that amortizes expensive circle refinement across frames."""
+"""Pixel detection pipeline: inference, optical flow and optional center refinement."""
 
 from __future__ import annotations
 
@@ -610,11 +610,12 @@ class AdaptiveBallDetector:
     """Schedule inference or optical flow and return one stable result type."""
 
     def __init__(self, config: AdaptiveBallDetectorConfig | None = None, *, model=None,
-                 circle_refiner: CircleRefiner = refine_circle):
+                 circle_refiner: CircleRefiner = refine_circle,
+                 inference=None, flow=None, refinement=None):
         self.config = config or AdaptiveBallDetectorConfig()
-        self.inference = ModelInference(self.config, model)
-        self.flow = OpticalFlowTracker(self.config)
-        self.refinement = CircleRefinementCache(self.config, circle_refiner)
+        self.inference = inference if inference is not None else ModelInference(self.config, model)
+        self.flow = flow if flow is not None else OpticalFlowTracker(self.config)
+        self.refinement = refinement if refinement is not None else CircleRefinementCache(self.config, circle_refiner)
         self.reset_tracking()
 
     def reset_tracking(self):
