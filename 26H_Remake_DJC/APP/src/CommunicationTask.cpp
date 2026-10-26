@@ -1,143 +1,45 @@
 #include "CommunicationTask.h"
 
-#include <cmath>
-#include <cstring>
 #include "FreeRTOS.h"
 #include "cmsis_os.h"
 #include "queue.h"
 #include "task.h"
 #include "usart.h"
-#include "BallBeamController.h"
-#include "BallStateEstimate.h"
-#include "DebugCommand.h"
+#include "AppTelemetry.h"
 #include "Serial.h"
 
-extern BallBeamController qd_controller;
-
 namespace {
-constexpr uint8_t kPiRxSof = 0xA5U;
-constexpr uint8_t kStm32TxSof = 0x5AU;
-constexpr uint8_t kCmdModeRequest = 0x06U;
-constexpr uint8_t kCmdRunState = 0x07U;
-constexpr uint8_t kCmdTuningState = 0x08U;
-constexpr uint8_t kCmdRunTelemetry = 0x84U;
-constexpr uint8_t kCmdTuningTelemetry = 0x85U;
-constexpr uint8_t kCmdModeReply = 0x86U;
 constexpr uint32_t kVisionTimeoutMs = 100U;
-constexpr int32_t kVisionPositionLimit001cm = 1100;
-constexpr float kRadToDeg = 57.2957795f;
+constexpr uint32_t kTelemetryPeriodMs = 20U;                // RUN和TUNING共用的遥测周期。
 UART_HandleTypeDef *const kRaspberryUart = &huart1;
 
-struct __attribute__((packed)) ModeRequestPackage {
-    uint8_t sof, cmd;
-    uint16_t seq;
-    uint8_t mode, crc8;
-};
+// DMA 缓冲区
+uint8_t raspberry_rx_buffer[128] = {};                      // pi -> stm32 接收缓冲区
+PiProtocol::FrameExtractor frame_extractor;                 // 协议层的帧提取器
+PiProtocol::TxFrame tx_frame;                               // stm32 -> pi 帧容器
+volatile bool tx_busy = false;                              // 发送区状态
+osMessageQueueId_t rx_queue = nullptr;                      // 完整的接收字节帧 RxFrame
+// 保存一条模式请求，等GimbalTask处理后，再由通信任务发送应答。
+struct ModeExchange {
+    // Idle：可以接收新请求；Requested：等待GimbalTask处理；ReplyReady：等待发送应答。
+    enum class Stage { Idle, Requested, ReplyReady };
+    PiModeRequest_t request = {};
+    uint8_t result = 0;
+    Stage stage = Stage::Idle;
+} mode_exchange;
+uint16_t telemetry_frame_seq = 0;                           // 遥测帧序号
 
-struct __attribute__((packed)) PiRxPackage {
-    uint8_t sof, cmd, flags;
-    uint16_t seq;
-    int32_t ball_pos_001cm, ball_vel_001cms;
-    uint32_t pi_time_ms;
-    uint8_t task_id;
-    uint16_t request_seq;
-    uint8_t crc8;
-};
+// 通信任务保存下面的数据，其它任务通过本文件的获取接口读取；读写时避免任务中途切换。
+uint8_t current_mode = COMM_MODE_NONE;                      // 当前模式
+uint32_t mode_generation = 0;                               // 模式切换后让执行器清除去重记录，允许新模式重新使用相同请求号。
+VisionData_t latest_vision_data = {};                       // 最新视觉数据
+bool has_vision_data = false;                               // 当前是否保存了视觉数据，与tracking_valid无关。
+PiExecutionRequest_t execution_request = {};                // 最新执行请求：任务及参数，不是闭环控制输出。
+bool has_execution_request = false;                         // 是否保存过执行请求，不表示执行成功。
+bool task_request_succeeded = false, parameters_applied = false;       // 任务请求成功、参数应用成功标志位
+uint16_t handled_task_request_seq = 0, handled_parameter_revision = 0; // 已处理编号，不表示运动完成。
 
-struct __attribute__((packed)) TuningRxPackage {
-    uint8_t sof, cmd, flags;
-    uint16_t seq;
-    int32_t ball_pos_001cm, ball_vel_001cms;
-    uint32_t pi_time_ms;
-    uint8_t task_id;
-    uint16_t request_seq;
-    int32_t kp_0001, ki_0001, kd_0001, target_v_001cms;
-    uint16_t revision;
-    uint8_t crc8;
-};
-
-struct __attribute__((packed)) ModeReplyPackage {
-    uint8_t sof, cmd;
-    uint16_t seq;
-    uint8_t mode, result, crc8;
-};
-
-struct __attribute__((packed)) ControlTelemetry {
-    uint8_t sof, cmd, status;
-    uint16_t seq;
-    int16_t ab_x_001cm, target_x_001cm, ab_v_001cms;
-    int16_t angle_001deg, target_angle_001deg, bbp_001deg, trim_001deg;
-    uint8_t control_flags, seq_stage;
-    uint16_t vision_seq, age_ms;
-    int16_t control_x_001cm, control_v_001cms, target_v_001cms;
-    uint32_t control_tick_ms, stm32_time_ms;
-    uint16_t request_seq;
-};
-struct __attribute__((packed)) RunTelemetryPackage {
-    ControlTelemetry data;
-    uint8_t crc8;
-};
-struct __attribute__((packed)) TuningTelemetryPackage {
-    ControlTelemetry data;
-    uint16_t revision;
-    uint8_t crc8;
-};
-static_assert(sizeof(ModeRequestPackage) == 6U && sizeof(ModeReplyPackage) == 7U);
-static_assert(sizeof(PiRxPackage) == 21U && sizeof(TuningRxPackage) == 39U);
-static_assert(sizeof(RunTelemetryPackage) == 42U && sizeof(TuningTelemetryPackage) == 44U);
-
-struct RxEvent { uint8_t size; uint8_t data[sizeof(TuningRxPackage)]; };
-struct ModeResponse { uint16_t seq; uint8_t mode, result; };
-osMessageQueueId_t rx_queue = nullptr;
-osMessageQueueId_t mode_reply_queue = nullptr;
-uint8_t raspberry_rx_buffer[128] = {};
-uint8_t pi_frame_buffer[sizeof(TuningRxPackage)] = {};
-uint16_t pi_frame_bytes = 0;
-volatile bool tx_busy = false;
-RunTelemetryPackage run_tx = {};
-TuningTelemetryPackage tuning_tx = {};
-ModeReplyPackage mode_tx = {};
-ModeResponse pending_reply = {};
-bool has_pending_reply = false;
-uint16_t tx_seq = 0;
-volatile uint8_t current_mode = COMM_MODE_NONE;
-uint32_t generation = 0;
-VisionFrame_t latest_vision_frame = {};
-bool latest_vision_valid = false;
-PiControlRequest_t control_request = {};
-bool has_control_request = false;
-bool task_succeeded = false, config_succeeded = false;
-uint16_t completed_request = 0, completed_revision = 0;
-
-static uint8_t ReverseBits(uint8_t data)
-{
-    data = static_cast<uint8_t>(((data & 0x55U) << 1U) | ((data & 0xAAU) >> 1U));
-    data = static_cast<uint8_t>(((data & 0x33U) << 2U) | ((data & 0xCCU) >> 2U));
-    data = static_cast<uint8_t>(((data & 0x0FU) << 4U) | ((data & 0xF0U) >> 4U));
-    return data;
-}
-
-uint8_t CRC8(const uint8_t *data,
-             uint32_t len,
-             uint8_t polynomial = 0x07U,
-             uint8_t init = 0x00U,
-             uint8_t xor_out = 0x00U,
-             bool input_invert = false,
-             bool output_invert = false)
-{
-    uint8_t crc = init;
-    while (len-- > 0U) {
-        crc ^= input_invert ? ReverseBits(*data++) : *data++;
-        for (uint8_t i = 0U; i < 8U; ++i) {
-            crc = (crc & 0x80U) ? static_cast<uint8_t>((crc << 1U) ^ polynomial)
-                                : static_cast<uint8_t>(crc << 1U);
-        }
-    }
-    crc ^= xor_out;
-    return output_invert ? ReverseBits(crc) : crc;
-}
-
-
+// 开启UART接收
 void StartRaspberryUartReceive()
 {
     if (HAL_UARTEx_ReceiveToIdle_DMA(kRaspberryUart, raspberry_rx_buffer,
@@ -146,292 +48,254 @@ void StartRaspberryUartReceive()
     }
 }
 
-void ProcessInput(const RxEvent& event)
+// 把打包好的帧交给DMA发送
+bool Transmit()
 {
-    if (event.data[1] == kCmdModeRequest) {
-        const auto& packet = *reinterpret_cast<const ModeRequestPackage *>(event.data);
-        if (packet.mode != COMM_MODE_RUN && packet.mode != COMM_MODE_TUNING) {
-            return;
-        }
-        DebugCommand_t command = {};
-        command.id = DEBUG_CMD_PI_SET_MODE;
-        command.arg1 = packet.mode;
-        command.mode_request_seq = packet.seq;
-        if (DebugCommandHandle == nullptr ||
-            osMessageQueuePut(DebugCommandHandle, &command, 0U, 0U) != osOK) {
-            Communication_ReplyMode(packet.mode, packet.seq, 1U);
-        }
-        return;
-    }
+    tx_busy = true;
+    if (HAL_UART_Transmit_DMA(kRaspberryUart, tx_frame.data, tx_frame.size) == HAL_OK) return true;
+    tx_busy = false;
+    return false;
+}
 
+// 保存Pi发来的模式请求
+bool RegisterModeRequest(const PiModeRequest_t& request)
+{
     taskENTER_CRITICAL();
-    const uint8_t mode = current_mode;
-    const uint32_t epoch = generation;
+    const bool available = mode_exchange.stage == ModeExchange::Stage::Idle;
+    if (available) {
+        mode_exchange.request = request;
+        mode_exchange.stage = ModeExchange::Stage::Requested;
+    }
     taskEXIT_CRITICAL();
-    if ((mode != COMM_MODE_RUN || event.data[1] != kCmdRunState) &&
-        (mode != COMM_MODE_TUNING || event.data[1] != kCmdTuningState)) {
-        return; // Only the selected mode's data is accepted.
+    return available;
+}
+
+// 保存Pi实际发来的视觉数据
+void SaveVisionData(const VisionData_t& vision)
+{
+    latest_vision_data = vision;
+    latest_vision_data.rx_tick_ms = HAL_GetTick();
+    has_vision_data = true;
+}
+
+// 保存上位机发来的执行请求：任务号、请求号和调参参数；不包含视觉测量或串口字节。
+void SaveExecutionRequest(const PiProtocol::DecodedRunTuningData& received)
+{
+    execution_request = {
+        mode_generation, received.mode, received.task_id, received.request_seq, received.revision,
+        received.kp, received.ki, received.kd, received.target_v_cm_s,
+    };
+    has_execution_request = true;
+}
+
+// 解码器
+bool ProcessInput(const PiProtocol::RxFrame& frame)
+{
+    PiProtocol::DecodedPiData input;                                // 创建解码结果容器
+    if (!PiProtocol::DecodeFrame(frame, input)) return true;        // 对帧进行解码,存放进input
+    // 根据帧类型，保存请求帧或者任务帧所需要的数据。
+    switch (input.frame_type) {
+    case PiProtocol::FrameType::ModeRequest: {
+        const auto& request = input.mode_request;
+        if (request.mode != COMM_MODE_RUN && request.mode != COMM_MODE_TUNING) return true;
+        return RegisterModeRequest(request);
     }
-    const auto& packet = *reinterpret_cast<const PiRxPackage *>(event.data);
-    if ((packet.flags & ~1U) != 0U) {
-        return;
-    }
-    VisionFrame_t vision = {};
-    vision.ball_pos_001cm = packet.ball_pos_001cm;
-    vision.ball_vel_001cms = packet.ball_vel_001cms;
-    vision.tracking_valid = packet.flags & 1U;
-    vision.seq = packet.seq;
-    vision.pi_time_ms = packet.pi_time_ms;
-    vision.rx_tick_ms = HAL_GetTick();
-    const bool in_range = vision.ball_pos_001cm >= -kVisionPositionLimit001cm &&
-                          vision.ball_pos_001cm <= kVisionPositionLimit001cm;
-    PiControlRequest_t request = {};
-    request.generation = epoch;
-    request.mode = mode;
-    request.task_id = packet.task_id;
-    request.request_seq = packet.request_seq;
-    if (mode == COMM_MODE_TUNING) {
-        const auto& tuning = *reinterpret_cast<const TuningRxPackage *>(event.data);
-        request.kp = tuning.kp_0001 * 0.0001f;
-        request.ki = tuning.ki_0001 * 0.0001f;
-        request.kd = tuning.kd_0001 * 0.0001f;
-        request.target_v_cm_s = tuning.target_v_001cms * 0.01f;
-        request.revision = tuning.revision;
-    }
-    taskENTER_CRITICAL();
-    if (epoch != generation) {
+    case PiProtocol::FrameType::Run:
+    case PiProtocol::FrameType::Tuning:
+        // 两种任务帧都带视觉和任务请求；TUNING还带参数，RUN的参数由解码器置零。
+        taskENTER_CRITICAL();
+        if (input.run_tuning.mode == current_mode) {
+            SaveVisionData(input.run_tuning.vision);               // BallStateTask读取。
+            SaveExecutionRequest(input.run_tuning);                // PiRequestHandler读取。
+        }
         taskEXIT_CRITICAL();
-        return;
+        break;
+    default:
+        break;
     }
-    if (!vision.tracking_valid || in_range) {
-        latest_vision_frame = vision;
-        latest_vision_valid = true;
-    }
-    control_request = request;
-    has_control_request = true;
-    taskEXIT_CRITICAL();
+    return true;
 }
 
-int16_t ToInt16Scaled(float value)
+// 从队列取帧，调用ProcessInput；模式请求还不能保存时，留到下一轮，不跳过它处理后续帧。
+void ProcessReceivedFrames()
 {
-    if (!std::isfinite(value)) return 0;
-    const long scaled = std::lround(value * 100.0f);
-    return static_cast<int16_t>(scaled < -32768 ? -32768 : (scaled > 32767 ? 32767 : scaled));
+    // 仅由唯一通信任务使用；跨循环保留尚未处理的那一帧，不是另一条消息队列。
+    static PiProtocol::RxFrame pending_frame;
+    static bool has_pending_frame = false;
+    for (;;) {
+        if (!has_pending_frame) {
+            if (osMessageQueueGet(rx_queue, &pending_frame, nullptr, 0U) != osOK) return;
+            has_pending_frame = true;
+        }
+        if (!ProcessInput(pending_frame)) return;
+        has_pending_frame = false;
+    }
 }
 
-uint8_t TelemetryStatus(uint32_t now)
+// 读取电机角度、小球状态等APP数据，再补上遥测序号、通信状态和任务/参数结果编号。
+PiProtocol::TelemetrySample CollectTelemetry()
 {
-    uint8_t status = (qd_controller.enabled ? 1U : 0U) | (qd_controller.started ? 2U : 0U);
+    const uint32_t now = HAL_GetTick();
+    auto sample = CollectAppTelemetry(now);
+    sample.seq = telemetry_frame_seq++;
     taskENTER_CRITICAL();
-    if (latest_vision_valid && latest_vision_frame.tracking_valid &&
-        now - latest_vision_frame.rx_tick_ms <= kVisionTimeoutMs) status |= 4U;
-    if (task_succeeded && control_request.request_seq == completed_request) status |= 8U;
-    if (config_succeeded && control_request.revision == completed_revision) status |= 16U;
+    // 保留APP提供的电机状态，再加上视觉有效性和任务/参数结果。
+    if (has_vision_data && latest_vision_data.tracking_valid &&
+        now - latest_vision_data.rx_tick_ms <= kVisionTimeoutMs) sample.status |= 4U;
+    if (task_request_succeeded && execution_request.request_seq == handled_task_request_seq) sample.status |= 8U;
+    if (parameters_applied && execution_request.revision == handled_parameter_revision) sample.status |= 16U;
+    sample.request_seq = handled_task_request_seq;
+    sample.revision = handled_parameter_revision;
     taskEXIT_CRITICAL();
-    return status;
+    return sample;
 }
 
+// GimbalTask处理模式请求后，把结果打包为0x86应答帧并启动DMA发送；发送忙时本轮跳过。
 void SendModeReply()
 {
     if (tx_busy) return;
-    if (!has_pending_reply) {
-        if (osMessageQueueGet(mode_reply_queue, &pending_reply, nullptr, 0U) != osOK) return;
-        has_pending_reply = true;
-    }
-    mode_tx = {kStm32TxSof, kCmdModeReply, pending_reply.seq,
-               pending_reply.mode, pending_reply.result, 0U};
-    mode_tx.crc8 = CRC8(reinterpret_cast<const uint8_t *>(&mode_tx), sizeof(mode_tx) - 1U);
-    tx_busy = true;
-    if (HAL_UART_Transmit_DMA(kRaspberryUart, reinterpret_cast<uint8_t *>(&mode_tx),
-                              sizeof(mode_tx)) == HAL_OK) {
-        has_pending_reply = false;
-    } else {
-        tx_busy = false;
+    taskENTER_CRITICAL();
+    const bool ready = mode_exchange.stage == ModeExchange::Stage::ReplyReady;
+    const PiProtocol::ModeReply reply{mode_exchange.request.seq, mode_exchange.request.mode,
+                                      mode_exchange.result};
+    taskEXIT_CRITICAL();
+    if (!ready) return;
+    PiProtocol::PackModeReply(reply, tx_frame);
+    if (Transmit()) {
+        taskENTER_CRITICAL();
+        mode_exchange.stage = ModeExchange::Stage::Idle;
+        taskEXIT_CRITICAL();
     }
 }
 
+// 按当前模式打包遥测：RUN发0x84，TUNING发0x85；未选模式或发送忙时不发送。
 void SendTelemetry()
 {
-    if (tx_busy || current_mode == COMM_MODE_NONE) return;
-    const uint8_t mode = current_mode;
-    ControlTelemetry sample = {};
-    BallStateEstimate_t state = {};
-    if (BallStateGetLatest(&state) == 0U) {
-        state.x_cm = qd_controller.getEstimatedBallX();
-        state.vx_cm_s = qd_controller.getEstimatedBallVx();
-        const uint32_t last_vision_tick = qd_controller.getLastVisionTick();
-        state.vision_age_ms = (last_vision_tick == 0U)
-            ? 9999U : (HAL_GetTick() - last_vision_tick);
-    }
-    const uint32_t now = HAL_GetTick();
-    sample.sof = kStm32TxSof;
-    sample.cmd = mode == COMM_MODE_TUNING ? kCmdTuningTelemetry : kCmdRunTelemetry;
-    sample.seq = tx_seq++;
-    sample.ab_x_001cm = ToInt16Scaled(state.x_cm);
-    sample.target_x_001cm = ToInt16Scaled(qd_controller.getBallTarget());
-    sample.ab_v_001cms = ToInt16Scaled(state.vx_cm_s);
-    sample.angle_001deg = ToInt16Scaled(qd_controller.motor_angle * kRadToDeg);
-    sample.target_angle_001deg = ToInt16Scaled(qd_controller.getBallAngleCommand() * kRadToDeg);
-    sample.bbp_001deg = ToInt16Scaled(qd_controller.getBallBrakePOffsetDeg());
-    sample.trim_001deg = ToInt16Scaled(qd_controller.getBallTerminalOffsetDeg());
-    sample.control_flags =
-        (qd_controller.isBallBrakePActive() ? 1U : 0U) |
-        (qd_controller.isBallTerminalPushActive() ? 2U : 0U) |
-        (qd_controller.isBallTerminalTrimActive() ? 4U : 0U) |
-        (qd_controller.isBallTerminalBrakeGateActive() ? 8U : 0U);
-    sample.seq_stage = qd_controller.getBallSequenceStage();
-    sample.vision_seq = state.vision_seq;
-    sample.age_ms = static_cast<uint16_t>(state.vision_age_ms > 65535U
-        ? 65535U : state.vision_age_ms);
-    BallBeamController::ControlInputSnapshot control_input = {};
-    if (qd_controller.getLastControlInput(&control_input)) {
-        sample.control_x_001cm = ToInt16Scaled(control_input.x_cm);
-        sample.control_v_001cms = ToInt16Scaled(control_input.vx_cm_s);
-        sample.target_v_001cms = ToInt16Scaled(control_input.target_v_cm_s);
-        sample.control_tick_ms = control_input.tick_ms;
-    } else {
-        sample.control_x_001cm = 0;
-        sample.control_v_001cms = 0;
-        sample.target_v_001cms = 0;
-        sample.control_tick_ms = 0U;
-    }
-    sample.stm32_time_ms = now;
-
+    if (tx_busy) return;
     taskENTER_CRITICAL();
-    sample.status = TelemetryStatus(now);
-    sample.request_seq = completed_request;
-    tuning_tx.revision = completed_revision;
+    const uint8_t mode = current_mode;
     taskEXIT_CRITICAL();
-    uint8_t *data;
-    uint16_t size;
-    if (mode == COMM_MODE_TUNING) {
-        tuning_tx.data = sample;
-        data = reinterpret_cast<uint8_t *>(&tuning_tx);
-        size = sizeof(tuning_tx);
-    } else {
-        run_tx.data = sample;
-        data = reinterpret_cast<uint8_t *>(&run_tx);
-        size = sizeof(run_tx);
+    switch (mode) {
+    case COMM_MODE_RUN:
+        PiProtocol::PackRunTelemetry(CollectTelemetry(), tx_frame);
+        break;
+    case COMM_MODE_TUNING:
+        PiProtocol::PackTuningTelemetry(CollectTelemetry(), tx_frame);
+        break;
+    default:
+        return;
     }
-    data[size - 1U] = CRC8(data, size - 1U);
-    tx_busy = true;
-    if (HAL_UART_Transmit_DMA(kRaspberryUart, data, size) != HAL_OK) tx_busy = false;
+    Transmit();
+}
+
+// 遥测按时间发送，不是每收到一帧就回应一帧：两种模式均每20ms尝试发送。
+void SendTelemetryWhenDue(uint32_t& last_telemetry_attempt_ms)
+{
+    const uint32_t now = HAL_GetTick();
+    if (now - last_telemetry_attempt_ms < kTelemetryPeriodMs) return;
+    SendTelemetry();
+    last_telemetry_attempt_ms = now;
 }
 } // namespace
 
-extern "C" void Communication_ApplyMode(uint8_t mode)
+// PiRequestHandler读取尚未处理的模式请求；返回true时，请求内容已复制到*request。
+extern "C" bool Communication_ReadModeRequest(PiModeRequest_t *request)
 {
+    if (request == nullptr) return false;
     taskENTER_CRITICAL();
-    current_mode = mode;
-    ++generation;
-    latest_vision_valid = has_control_request = false;
-    task_succeeded = config_succeeded = false;
+    const bool requested = mode_exchange.stage == ModeExchange::Stage::Requested;
+    if (requested) *request = mode_exchange.request;
     taskEXIT_CRITICAL();
+    return requested;
 }
 
-extern "C" void Communication_ReplyMode(uint8_t mode, uint16_t seq, uint8_t result)
+// 保存模式请求结果
+extern "C" void Communication_SaveModeResult(const PiModeRequest_t *request, uint8_t result)
 {
-    const ModeResponse reply = {seq, mode, result};
-    osMessageQueuePut(mode_reply_queue, &reply, 0U, 0U);
-}
-
-extern "C" bool Communication_GetControlRequest(PiControlRequest_t *request)
-{
+    if (request == nullptr) return;
     taskENTER_CRITICAL();
-    const bool valid = has_control_request;
-    if (valid) *request = control_request;
-    taskEXIT_CRITICAL();
-    return valid;
-}
-
-extern "C" void Communication_ReportSuccess(uint32_t epoch, bool parameters,
-                                            uint16_t seq, bool success)
-{
-    taskENTER_CRITICAL();
-    if (epoch == generation) {
-        if (parameters) {
-            completed_revision = seq;
-            config_succeeded = success;
-        } else {
-            completed_request = seq;
-            task_succeeded = success;
+    if (mode_exchange.stage == ModeExchange::Stage::Requested &&
+        mode_exchange.request.seq == request->seq && mode_exchange.request.mode == request->mode) {
+        if (result == 0U) {
+            current_mode = request->mode;
+            ++mode_generation;
+            has_vision_data = has_execution_request = false;
+            task_request_succeeded = parameters_applied = false;
         }
+        mode_exchange.result = result;
+        mode_exchange.stage = ModeExchange::Stage::ReplyReady;
     }
     taskEXIT_CRITICAL();
 }
 
-extern "C" bool Communication_GetLatestVisionFrame(VisionFrame_t *frame, uint32_t max_age_ms)
+// PiRequestHandler读取最新的任务号和调参参数；返回true不代表请求已执行。
+extern "C" bool Communication_ReadExecutionRequest(PiExecutionRequest_t *request)
 {
-    if (frame == nullptr) return false;
+    if (request == nullptr) return false;
     taskENTER_CRITICAL();
-    const bool valid = latest_vision_valid &&
-        (max_age_ms == 0U || HAL_GetTick() - latest_vision_frame.rx_tick_ms <= max_age_ms);
-    if (valid) *frame = latest_vision_frame;
+    const bool has_request = has_execution_request;
+    if (has_request) *request = execution_request;
     taskEXIT_CRITICAL();
-    return valid;
+    return has_request;
 }
 
+// PiRequestHandler保存任务启动/初始化结果或参数应用结果，之后随遥测发给Pi。
+// 只由GimbalTask中的PiRequestHandler同步调用；success不表示运动已完成。
+extern "C" void Communication_SaveExecutionResult(PiResultKind_t kind, uint16_t result_id, bool success)
+{
+    taskENTER_CRITICAL();
+    if (kind == PI_RESULT_PARAMETERS) {
+        handled_parameter_revision = result_id;
+        parameters_applied = success;
+    } else if (kind == PI_RESULT_TASK) {
+        handled_task_request_seq = result_id;
+        task_request_succeeded = success;
+    }
+    taskEXIT_CRITICAL();
+}
+
+// 复制最新视觉数据到*vision_data；max_age_ms=0不检查数据年龄，否则超过指定毫秒数返回false。
+// 返回true只表示取到了数据，还要看tracking_valid才能知道Pi是否识别到球。
+extern "C" bool Communication_ReadLatestVisionData(VisionData_t *vision_data, uint32_t max_age_ms)
+{
+    if (vision_data == nullptr) return false;
+    taskENTER_CRITICAL();
+    const bool has_data = has_vision_data &&
+        (max_age_ms == 0U || HAL_GetTick() - latest_vision_data.rx_tick_ms <= max_age_ms);
+    if (has_data) *vision_data = latest_vision_data;
+    taskEXIT_CRITICAL();
+    return has_data;
+}
+
+// 启动时创建接收队列并开启DMA接收；循环中还会发送模式应答和周期遥测。
 extern "C" void StartCommunicationTask(void *argument)
 {
     (void)argument;
-    rx_queue = osMessageQueueNew(8U, sizeof(RxEvent), nullptr);
-    mode_reply_queue = osMessageQueueNew(4U, sizeof(ModeResponse), nullptr);
-    if (rx_queue == nullptr || mode_reply_queue == nullptr) {
+    rx_queue = osMessageQueueNew(8U, sizeof(PiProtocol::RxFrame), nullptr);
+    if (rx_queue == nullptr) {
         for (;;) osDelay(100U);
     }
     StartRaspberryUartReceive();
-    uint32_t last_tx_ms = HAL_GetTick();
+    uint32_t last_telemetry_attempt_ms = HAL_GetTick();
     for (;;) {
-        RxEvent event = {};
-        while (osMessageQueueGet(rx_queue, &event, nullptr, 0U) == osOK) ProcessInput(event);
-        SendModeReply();
-        const uint32_t now = HAL_GetTick();
-        const uint32_t period = current_mode == COMM_MODE_TUNING ? 5U : 20U;
-        if (now - last_tx_ms >= period) {
-            SendTelemetry();
-            last_tx_ms = now;
-        }
+        ProcessReceivedFrames();                                // 接收、解码、按帧类型保存，供APP读取。
+        SendModeReply();                        // APP处理模式请求后，发送0x86应答。
+        SendTelemetryWhenDue(last_telemetry_attempt_ms); // 读取APP状态，周期发送0x84或0x85。
         osDelay(1U);
     }
 }
 
-static uint16_t PiFrameSize(uint8_t command)
-{
-    switch (command) {
-    case kCmdModeRequest: return sizeof(ModeRequestPackage);
-    case kCmdRunState: return sizeof(PiRxPackage);
-    case kCmdTuningState: return sizeof(TuningRxPackage);
-    default: return 0U;
-    }
-}
 
-static void DispatchPiFrameFromISR(uint16_t size, BaseType_t *woken)
-{
-    RxEvent event = {};
-    event.size = static_cast<uint8_t>(size);
-    std::memcpy(event.data, pi_frame_buffer, size);
-    xQueueSendToBackFromISR(reinterpret_cast<QueueHandle_t>(rx_queue), &event, woken);
-}
-
+// 收到字节，提取完整帧，放入 rx_queue
 extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
     if (huart == kRaspberryUart) {
         BaseType_t woken = pdFALSE;
+        PiProtocol::RxFrame frame;
         for (uint16_t i = 0; i < Size; ++i) {
-            pi_frame_buffer[pi_frame_bytes++] = raspberry_rx_buffer[i];
-            while (pi_frame_bytes != 0U) {
-                const uint16_t size = pi_frame_bytes >= 2U ? PiFrameSize(pi_frame_buffer[1]) : 0U;
-                if (pi_frame_buffer[0] == kPiRxSof && (pi_frame_bytes < 2U || size != 0U)) {
-                    if (pi_frame_bytes < size || pi_frame_bytes < 2U) break;
-                    if (pi_frame_buffer[size - 1U] == CRC8(pi_frame_buffer, size - 1U)) {
-                        DispatchPiFrameFromISR(size, &woken);
-                        pi_frame_bytes -= size;
-                        std::memmove(pi_frame_buffer, pi_frame_buffer + size, pi_frame_bytes);
-                        continue;
-                    }
-                }
-                --pi_frame_bytes;
-                std::memmove(pi_frame_buffer, pi_frame_buffer + 1U, pi_frame_bytes);
+            frame_extractor.push(raspberry_rx_buffer[i]);
+            while (frame_extractor.next(frame)) {
+                xQueueSendToBackFromISR(reinterpret_cast<QueueHandle_t>(rx_queue), &frame, &woken);
             }
         }
         portYIELD_FROM_ISR(woken);
@@ -439,20 +303,21 @@ extern "C" void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t S
     }
 }
 
+// HAL通知DMA发送完成，解除tx_busy，允许通信任务发送下一帧。
 extern "C" void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == kRaspberryUart) tx_busy = false;
     Serial_OnTxCplt(huart);
 }
 
+// HAL通知串口出错，丢弃未收完整的帧、清除发送忙标记，再尝试开启接收。
 extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
     if (huart == kRaspberryUart) {
         __HAL_UNLOCK(huart);
-        pi_frame_bytes = 0;
+        frame_extractor.reset();
         tx_busy = false;
         StartRaspberryUartReceive();
     }
     Serial_OnError(huart);
 }
-

@@ -36,8 +36,67 @@ set(OLD_GLOB
   "D:/26H-remake/26H_Remake_DJC/APP/src/CommunicationTask.cpp"
   "D:/26H-remake/26H_Remake_DJC/APP/src/DebugTask.cpp"
   "D:/26H-remake/26H_Remake_DJC/APP/src/GimbalTask.cpp"
-  "D:/26H-remake/26H_Remake_DJC/APP/src/Motortest.cpp"
-  "D:/26H-remake/26H_Remake_DJC/APP/src/PiControl.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/BallBeam/src/*.c")
+set(OLD_GLOB
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/BallBeam/src/*.cpp")
+set(OLD_GLOB
+  "D:/26H-remake/26H_Remake_DJC/Application/BallBeam/src/BallBeamController.cpp"
+  "D:/26H-remake/26H_Remake_DJC/Application/BallBeam/src/BallBeamTasks.cpp"
+  "D:/26H-remake/26H_Remake_DJC/Application/BallBeam/src/BallStateEstimator.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/Communication/src/*.c")
+set(OLD_GLOB
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/Communication/src/*.cpp")
+set(OLD_GLOB
+  "D:/26H-remake/26H_Remake_DJC/Application/Communication/src/AppTelemetry.cpp"
+  "D:/26H-remake/26H_Remake_DJC/Application/Communication/src/PiProtocol.cpp"
+  "D:/26H-remake/26H_Remake_DJC/Application/Communication/src/PiRequestHandler.cpp"
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/MotorTest/src/*.c")
+set(OLD_GLOB
+  )
+if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
+  message("-- GLOB mismatch!")
+  file(TOUCH_NOCREATE "D:/26H-remake/26H_Remake_DJC/build/Debug/CMakeFiles/cmake.verify_globs")
+endif()
+
+# APPLICATION_SOURCES at CMakeLists.txt:59 (file)
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/Application/MotorTest/src/*.cpp")
+set(OLD_GLOB
+  "D:/26H-remake/26H_Remake_DJC/Application/MotorTest/src/MotorTest.cpp"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   message("-- GLOB mismatch!")
@@ -64,7 +123,7 @@ if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
 endif()
 
 # USERLIB_SOURCES at CMakeLists.txt:54 (file)
-file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/UserLib/*.c")
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/UserLib/src/*.c")
 set(OLD_GLOB
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
@@ -73,10 +132,9 @@ if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
 endif()
 
 # USERLIB_SOURCES at CMakeLists.txt:54 (file)
-file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/UserLib/*.cpp")
+file(GLOB NEW_GLOB LIST_DIRECTORIES true "D:/26H-remake/26H_Remake_DJC/UserLib/src/*.cpp")
 set(OLD_GLOB
-  "D:/26H-remake/26H_Remake_DJC/UserLib/BallBeamController.cpp"
-  "D:/26H-remake/26H_Remake_DJC/UserLib/QDMotorController.cpp"
+  "D:/26H-remake/26H_Remake_DJC/UserLib/src/QDMotorController.cpp"
   )
 if(NOT "${NEW_GLOB}" STREQUAL "${OLD_GLOB}")
   message("-- GLOB mismatch!")

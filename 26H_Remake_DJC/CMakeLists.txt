@@ -52,8 +52,17 @@ file(GLOB APP_SOURCES CONFIGURE_DEPENDS
 )
 
 file(GLOB USERLIB_SOURCES CONFIGURE_DEPENDS
-    UserLib/*.c
-    UserLib/*.cpp
+    UserLib/src/*.c
+    UserLib/src/*.cpp
+)
+
+file(GLOB APPLICATION_SOURCES CONFIGURE_DEPENDS
+    Application/Communication/src/*.c
+    Application/Communication/src/*.cpp
+    Application/BallBeam/src/*.c
+    Application/BallBeam/src/*.cpp
+    Application/MotorTest/src/*.c
+    Application/MotorTest/src/*.cpp
 )
 
 # Link directories setup
@@ -67,6 +76,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Hardware/Serial.c
     ${DEVICE_SOURCES}
     ${APP_SOURCES}
+    ${APPLICATION_SOURCES}
     ${USERLIB_SOURCES}
     # Add user sources here
 )
@@ -77,7 +87,10 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     Devices
     APP
     APP/inc
-    UserLib
+    Application/Communication/inc
+    Application/BallBeam/inc
+    Application/MotorTest/inc
+    UserLib/inc
     # Add user defined include paths
 )
 

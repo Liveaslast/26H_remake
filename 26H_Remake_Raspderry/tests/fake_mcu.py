@@ -20,7 +20,7 @@ def telemetry(status=0, seq=1, angle=-1200, *, mode=Mode.RUN,
               request_seq=0, revision=0):
     layout = RUN_TELEMETRY_FRAME if mode == Mode.RUN else TUNING_TELEMETRY_FRAME
     fields = (0x5A, 0x84 if mode == Mode.RUN else 0x85, status, seq,
-              100, 500, 200, angle, 2300, 0, 0, 0, 10, 12, 5,
+              100, 500, 200, angle, 2300, 10, 12, 5,
               110, 190, 500, 1234, 1235, request_seq)
     if mode == Mode.TUNING:
         fields += (revision,)

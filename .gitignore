@@ -10,6 +10,15 @@
 
 !/.gitignore
 !/README.md
+!/AGENTS.md
+!/ARCHITECTURE.md
+!/.gitattributes
+
+# Share only portable Markdown preview settings, not all editor state.
+!/.vscode/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/markdown-preview.css
 
 # ==========================================
 # Only upload these project directories

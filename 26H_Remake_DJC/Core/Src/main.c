@@ -27,7 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "LED.h"
-#include "Motortest.h"
+#include "MotorTest.h"
 #include "BuildMode.h"
 /* USER CODE END Includes */
 

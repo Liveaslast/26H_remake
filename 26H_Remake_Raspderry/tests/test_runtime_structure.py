@@ -51,6 +51,29 @@ SECTIONS = (
 
 
 class RuntimeStructureTests(unittest.TestCase):
+    def test_mcu_directory_ownership_and_unique_headers(self):
+        import re
+        mcu = ROOT.parent / "26H_Remake_DJC"
+        if not mcu.exists():
+            self.skipTest("MCU source is not included in this deployment")
+        for module in (mcu / "Application").iterdir():
+            if module.is_dir():
+                self.assertTrue((module / "inc").is_dir(), str(module))
+                self.assertTrue((module / "src").is_dir(), str(module))
+        owned_files = [path for directory in ("APP", "Application", "UserLib")
+                       for path in (mcu / directory).rglob("*")
+                       if path.is_file() and path.suffix in (".h", ".cpp", ".c")]
+        names = [path.name for path in owned_files]
+        self.assertEqual(len(names), len(set(names)), "Duplicate files across MCU directories")
+        business_headers = {path.name for path in owned_files
+                            if path.suffix == ".h" and "UserLib" not in path.parts}
+        for path in (mcu / "UserLib").rglob("*"):
+            if not path.is_file() or path.suffix not in (".h", ".cpp", ".c"):
+                continue
+            includes = re.findall(r'^\s*#include\s+"([^"]+)"',
+                                  path.read_text(encoding="utf-8"), re.MULTILINE)
+            self.assertFalse(set(includes) & business_headers, str(path))
+
     def test_tuning_packet_includes_vision_and_parameter_revision(self):
         self.assertEqual(PI_TUNING_FRAME.size, 39)
         client, port = start_client(self, Mode.TUNING)
@@ -74,7 +97,7 @@ class RuntimeStructureTests(unittest.TestCase):
     def test_tuning_task_number_matches_mcu_wire_constant(self):
         import re
         from ballbeam.communication.protocol import TUNING_TASK_VELOCITY
-        header = ROOT.parent / "26H_Remake_DJC/APP/inc/CommunicationTask.h"
+        header = ROOT.parent / "26H_Remake_DJC/Application/Communication/inc/PiRequestHandler.h"
         if not header.exists():
             self.skipTest("MCU source is not included in this deployment")
         match = re.search(r"PI_TUNING_TASK_VELOCITY\s*=\s*(\d+)", header.read_text(encoding="utf-8"))
@@ -82,13 +105,13 @@ class RuntimeStructureTests(unittest.TestCase):
         self.assertEqual(TUNING_TASK_VELOCITY, int(match.group(1)))
 
     def test_velocity_step_reuses_task1_sample_and_csv(self) -> None:
-        self.assertEqual(TUNING_TELEMETRY_FRAME.size, 44)
+        self.assertEqual(TUNING_TELEMETRY_FRAME.size, 39)
         client, serial_port = start_client(self, Mode.TUNING)
         samples = []
         client.record_control_sample = samples.append
         packet = TUNING_TELEMETRY_FRAME.pack(
             0x5A, 0x85, 0x80, 7, 100, 0, 200, 2200, 2300,
-            0, 0, 0, 10, 12, 5, 110, 190, 500, 1234, 1235, 0, 0, 0,
+            10, 12, 5, 110, 190, 500, 1234, 1235, 0, 0, 0,
         )
         serial_port.incoming.put(packet[:-1] + bytes((crc8(packet[:-1]),)))
         wait_until(lambda: len(samples) == 1)
@@ -123,13 +146,13 @@ class RuntimeStructureTests(unittest.TestCase):
         self.assertEqual(len(serial_port.frames[0]), 21)
 
     def test_task1_sample_decodes_exact_control_input(self) -> None:
-        self.assertEqual(TUNING_TELEMETRY_FRAME.size, 44)
+        self.assertEqual(TUNING_TELEMETRY_FRAME.size, 39)
         client, serial_port = start_client(self, Mode.TUNING)
         samples = []
         client.record_control_sample = samples.append
         packet = TUNING_TELEMETRY_FRAME.pack(
             0x5A, 0x85, 0, 1, 100, 500, 20, 2200, 2650,
-            -400, 0, 1, 1, 12, 5, 105, 25, 200, 1234, 1235, 0, 0, 0,
+            1, 12, 5, 105, 25, 200, 1234, 1235, 0, 0, 0,
         )
         serial_port.incoming.put(packet[:-1] + bytes((crc8(packet[:-1]),)))
         wait_until(lambda: len(samples) == 1)

@@ -395,8 +395,8 @@ CMD_TELEMETRY = 0x84
 FLAG_TRACKING_VALID = 1 << 0
 
 PI_FRAME = struct.Struct("<BBBHiiIBHB")
-TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhhhBBHHhhhIIHB")
-TUNING_TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhhhBBHHhhhIIHHB")
+TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhBHHhhhIIHB")
+TUNING_TELEMETRY_FRAME = struct.Struct("<BBBHhhhhhBHHhhhIIHHB")
 
 
 def _crc8(data: bytes, polynomial: int = 0x07, init: int = 0x00) -> int:

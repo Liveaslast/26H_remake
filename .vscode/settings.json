@@ -1,0 +1,7 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/26H_Remake_DJC",
+    "markdown.preview.fontSize": 18,
+    "markdown.preview.fontFamily": "'Segoe UI', 'Microsoft YaHei', sans-serif",
+    "markdown.preview.lineHeight": 1.6,
+    "markdown.styles": [".vscode/markdown-preview.css"]
+}

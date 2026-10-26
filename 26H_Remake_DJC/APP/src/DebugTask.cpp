@@ -3,9 +3,11 @@
 #include "QD4310.h"
 #include "BallBeamController.h"
 #include "BallStateEstimate.h"
+#include "BallStateTask.h"
+#include "BallBeamTasks.h"
 #include "CommunicationTask.h"
 #include "Serial.h"
-#include "VisionFrame.h"
+#include "VisionData.h"
 #include "SystemID.h"
 
 #include <cmath>
@@ -13,6 +15,7 @@
 #include <cstring>
 
 extern BallBeamController qd_controller;
+extern BallBeamTasks ball_tasks;
 
 namespace {
 
@@ -62,31 +65,25 @@ void PrintCsvSample()                                   // 控制模式打印机
         state.vision_age_ms = 9999U;
     }
 
-    Serial_Printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,%u,%u,%u,%u,%u,%lu\r\n",
+    Serial_Printf("%ld,%ld,%ld,%ld,%ld,%u,%lu\r\n",
                 static_cast<long>(std::lround(state.x_cm * 100.0f)),
                 static_cast<long>(std::lround(qd_controller.getBallTarget() * 100.0f)),
                 static_cast<long>(std::lround(state.vx_cm_s * 100.0f)),
                 static_cast<long>(std::lround(qd_controller.motor_angle * kRadToDeg * 100.0f)),
                 static_cast<long>(std::lround(qd_controller.getBallAngleCommand() * kRadToDeg * 100.0f)),
-                static_cast<long>(std::lround(qd_controller.getBallBrakePOffsetDeg() * 100.0f)),
-                static_cast<long>(std::lround(qd_controller.getBallTerminalOffsetDeg() * 100.0f)),
-                qd_controller.isBallBrakePActive() ? 1U : 0U,
-                qd_controller.isBallTerminalPushActive() ? 1U : 0U,
-                qd_controller.isBallTerminalTrimActive() ? 1U : 0U,
-                qd_controller.isBallTerminalBrakeGateActive() ? 1U : 0U,
-                static_cast<unsigned int>(qd_controller.getBallSequenceStage()),
+                static_cast<unsigned int>(ball_tasks.getStage()),
                 static_cast<unsigned long>(state.vision_age_ms));
 }
 
 void PrintVisionCsvSample()                             // 视觉模式打印机
 {
-    VisionFrame_t frame = {};
-    const bool has_frame = Communication_GetLatestVisionFrame(&frame, 0U);
+    VisionData_t vision_data = {};
+    const bool has_vision_data = Communication_ReadLatestVisionData(&vision_data, 0U);
 
     BallStateEstimate_t state = {};
     const bool has_state = BallStateGetLatest(&state) != 0U;
     const uint32_t now_ms = HAL_GetTick();
-    const uint32_t rx_age_ms = has_frame ? (now_ms - frame.rx_tick_ms) : 9999U;
+    const uint32_t rx_age_ms = has_vision_data ? (now_ms - vision_data.rx_tick_ms) : 9999U;
 
     // 固定5ms打印数据，位置和速度采用 0.01cm 为单位
     // 以降低 USART6（115200 波特率）的 CSV 数据传输带宽占用
@@ -96,11 +93,11 @@ void PrintVisionCsvSample()                             // 视觉模式打印机
     // 估计速度,有效视觉数据年龄。
     Serial_Printf("V,%lu,%u,%lu,%u,%lu,%ld,%u,%ld,%ld,%lu\r\n",
                   static_cast<unsigned long>(now_ms),
-                  has_frame ? static_cast<unsigned int>(frame.seq) : 0U,
-                  has_frame ? static_cast<unsigned long>(frame.pi_time_ms) : 0UL,
-                  (has_frame && (frame.tracking_valid != 0U)) ? 1U : 0U,
+                  has_vision_data ? static_cast<unsigned int>(vision_data.seq) : 0U,
+                  has_vision_data ? static_cast<unsigned long>(vision_data.pi_time_ms) : 0UL,
+                  (has_vision_data && (vision_data.tracking_valid != 0U)) ? 1U : 0U,
                   static_cast<unsigned long>(rx_age_ms),
-                  has_frame ? static_cast<long>(frame.ball_pos_001cm) : 0L,
+                  has_vision_data ? static_cast<long>(std::lround(vision_data.x_cm * 100.0f)) : 0L,
                   (has_state && (state.valid != 0U)) ? 1U : 0U,
                   static_cast<long>(std::lround((has_state ? state.x_cm : 0.0f) * 100.0f)),
                   static_cast<long>(std::lround((has_state ? state.vx_cm_s : 0.0f) * 100.0f)),
@@ -287,9 +284,9 @@ void ExecuteLine(char *line)                              // 串口命令解析�
         } else if (std::strcmp(action, "status") == 0) {
             if (csv_mode == CsvMode::Off) {
                 Serial_Printf("task=%u active=%u stage=%u\r\n",
-                    static_cast<unsigned int>(qd_controller.getActiveTask()),
-                    qd_controller.isTaskActive() ? 1U : 0U,
-                    static_cast<unsigned int>(qd_controller.getBallSequenceStage()));
+                    static_cast<unsigned int>(ball_tasks.getActiveTask()),
+                    ball_tasks.isTaskActive() ? 1U : 0U,
+                    static_cast<unsigned int>(ball_tasks.getStage()));
             }
         } else {
             if (csv_mode == CsvMode::Off) Serial_Printf("unknown task command\r\n");

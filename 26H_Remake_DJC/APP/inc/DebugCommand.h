@@ -46,8 +46,7 @@ typedef enum {
     DEBUG_CMD_VISION_SET_ACTIVE_PREDICTION,
     DEBUG_CMD_VISION_SET_MEASUREMENT_DEADBAND,
     DEBUG_CMD_SET_ZERO_POINT,
-    DEBUG_CMD_CLEAR_ZERO_POINT,
-    DEBUG_CMD_PI_SET_MODE
+    DEBUG_CMD_CLEAR_ZERO_POINT
 } DebugCommandId_t;
 
 typedef struct {
@@ -56,7 +55,6 @@ typedef struct {
     float arg2;
     float arg3;
     float arg4;
-    uint16_t mode_request_seq; // Only DEBUG_CMD_PI_SET_MODE uses this field.
 } DebugCommand_t;
 
 extern osMessageQueueId_t DebugCommandHandle;

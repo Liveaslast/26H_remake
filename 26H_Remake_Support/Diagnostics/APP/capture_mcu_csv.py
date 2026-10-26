@@ -23,12 +23,6 @@ FIRMWARE_FIELDS = [
     "estimated_vx_cm_s",
     "motor_angle_deg",
     "angle_command_deg",
-    "brake_p_offset_deg",
-    "terminal_offset_deg",
-    "brake_p_active",
-    "terminal_push_active",
-    "terminal_trim_active",
-    "terminal_brake_gate_active",
     "sequence_stage",
     "vision_age_ms",
 ]
@@ -156,7 +150,7 @@ def parse_firmware_sample(line: str) -> list[float | int] | None:
         values = [int(part) for part in parts]
     except ValueError:
         return None
-    return [value * 0.01 for value in values[:7]] + values[7:]
+    return [value * 0.01 for value in values[:5]] + values[5:]
 
 
 def parse_sysid_sample(line: str) -> dict[str, float | int] | None:

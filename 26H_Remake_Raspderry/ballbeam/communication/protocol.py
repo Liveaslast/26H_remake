@@ -74,7 +74,7 @@ MODE_REQUEST_FRAME = struct.Struct("<BBHBB")                    # pi -> stm32: A
 MODE_REPLY_FRAME = struct.Struct("<BBHBBB")                     # stm32 -> pi: 5A, 86, seq, mode, result, CRC
 PI_RUN_FRAME = struct.Struct("<BBBHiiIBHB")                    # pi -> stm32: A5, 07, flags, seq, x, v, time, task, request, CRC
 PI_TUNING_FRAME = struct.Struct("<BBBHiiIBHiiiiHB")              # pi -> stm32: A5, 08, fields, PID, target, revision, CRC
-CONTROL_FIELDS = "<BBBHhhhhhhhBBHHhhhII"                        # 运行遥测与调参遥测共用的控制数据布局
+CONTROL_FIELDS = "<BBBHhhhhhBHHhhhII"                          # 运行遥测与调参遥测共用的控制数据布局
 RUN_TELEMETRY_FRAME = struct.Struct(CONTROL_FIELDS + "HB")     # stm32 -> pi: 运行遥测帧数据布局
 TUNING_TELEMETRY_FRAME = struct.Struct(CONTROL_FIELDS + "HHB")   # stm32 -> pi: 调参遥测帧数据布局
 MCU_FRAME_SIZES = {                                             # stm32 -> pi: 帧长度定义
@@ -157,15 +157,14 @@ def decode_telemetry(frame):
     layout = RUN_TELEMETRY_FRAME if command == CMD_RUN_TELEMETRY else TUNING_TELEMETRY_FRAME
     _validate(frame, layout, STM32_SOF, command)
     fields = layout.unpack(frame)
-    (_, _, status, seq, x, target_x, v, angle, target_angle, bbp, trim,
-     flags, stage, vision_seq, age, control_x, control_v, target_v,
-     control_tick, mcu_tick, request_seq) = fields[:21]
-    revision = fields[21] if command == CMD_TUNING_TELEMETRY else None
+    (_, _, status, seq, x, target_x, v, angle, target_angle,
+     stage, vision_seq, age, control_x, control_v, target_v,
+     control_tick, mcu_tick, request_seq) = fields[:18]
+    revision = fields[18] if command == CMD_TUNING_TELEMETRY else None
     sample = SimpleNamespace(
         seq=seq, stm32_time_ms=mcu_tick, ab_x=x / 100, target_x=target_x / 100,
         ab_v=v / 100, angle=angle / 100, target_angle=target_angle / 100,
-        bbp_deg=bbp / 100, trim_deg=trim / 100, bbp=flags & 1, bpush=(flags >> 1) & 1,
-        btrim=(flags >> 2) & 1, bterm=(flags >> 3) & 1, seq_stage=stage,
+        seq_stage=stage,
         vision_seq=vision_seq, age_ms=age, control_x=control_x / 100,
         control_v=control_v / 100, target_v=target_v / 100, control_tick_ms=control_tick,
     )

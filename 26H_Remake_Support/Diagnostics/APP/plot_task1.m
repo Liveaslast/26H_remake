@@ -15,7 +15,7 @@ end
 
 data = readtable(csv_path);
 required = {'t_s', 'ab_x', 'target_x', 'ab_v', 'angle', ...
-    'target_angle', 'bbp_deg', 'trim_deg', 'bbp', 'bpush', 'seq_stage'};
+    'target_angle', 'seq_stage'};
 missing = setdiff(required, data.Properties.VariableNames);
 if ~isempty(missing)
     error('Missing Task1 CSV columns: %s', strjoin(missing, ', '));
@@ -69,9 +69,9 @@ if has_control_input
         'PV feedback (deg)', 'I weight', 'Stage'};
 else
     groups = {{'ab_x', 'target_x'}, 'ab_v', {'angle', 'target_angle'}, ...
-        {'bbp_deg', 'trim_deg'}, {'bbp', 'bpush', 'seq_stage'}};
+        'seq_stage'};
     labels = {'Position (cm)', 'Est. speed (cm/s)', ...
-        'Motor angle (deg)', 'Offset (deg)', 'State'};
+        'Motor angle (deg)', 'Stage'};
 end
 
 figure('Name', 'Task1 control waveforms', 'NumberTitle', 'off');
@@ -81,7 +81,7 @@ chart.XLabel = 'Time (s)';
 if has_control_input
     legend_rows = [1, 2, 3, 4];
 else
-    legend_rows = [1, 3, 4, 5];
+    legend_rows = [1, 3];
 end
 for k = legend_rows
     chart.AxesProperties(k).LegendVisible = 'on';

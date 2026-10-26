@@ -24,7 +24,7 @@ class CommunicationTests(unittest.TestCase):
     def test_six_frame_sizes_and_mode_wire_bytes(self):
         self.assertEqual([x.size for x in (MODE_REQUEST_FRAME, PI_RUN_FRAME, PI_TUNING_FRAME,
                                           MODE_REPLY_FRAME, RUN_TELEMETRY_FRAME, TUNING_TELEMETRY_FRAME)],
-                         [6, 21, 39, 7, 42, 44])
+                         [6, 21, 39, 7, 37, 39])
         packet = pack_mode_request(0x1234, Mode.TUNING)
         self.assertEqual(packet[:-1], bytes.fromhex("a506341202"))
         self.assertEqual(packet[-1], crc8(packet[:-1]))
@@ -59,6 +59,8 @@ class CommunicationTests(unittest.TestCase):
             self.assertEqual(decoded.actual_angle_deg, -12)
             self.assertEqual(decoded.sample.control_v, 1.9)
             self.assertEqual(decoded.sample.target_v, 5)
+            for removed in ("bbp_deg", "trim_deg", "bbp", "bpush", "btrim", "bterm"):
+                self.assertFalse(hasattr(decoded.sample, removed))
             self.assertEqual(decoded.request_seq, 8)
             self.assertEqual(decoded.revision, 9 if mode == Mode.TUNING else None)
 

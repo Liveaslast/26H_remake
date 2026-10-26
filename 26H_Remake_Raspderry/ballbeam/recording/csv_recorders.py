@@ -18,8 +18,7 @@ class Task1CsvLogger:
 
     _HEADER = (
         "t_s", "phase", "ab_x", "target_x", "ab_v", "angle",
-        "target_angle", "bbp_deg", "trim_deg", "bbp", "bpush",
-        "btrim", "bterm", "seq_stage", "age_ms", "stm32_ms", "frame_seq", "vision_seq",
+        "target_angle", "seq_stage", "age_ms", "stm32_ms", "frame_seq", "vision_seq",
         "control_ms", "control_x", "control_v", "target_v",
     )
 
@@ -67,8 +66,7 @@ class Task1CsvLogger:
             self.output.write((
                 ((ms - self._first_ms) & 0xFFFFFFFF) / 1000.0,
                 phase, sample.ab_x, target, sample.ab_v, sample.angle,
-                sample.target_angle, sample.bbp_deg, sample.trim_deg,
-                sample.bbp, sample.bpush, sample.btrim, sample.bterm,
+                sample.target_angle,
                 sample.seq_stage, sample.age_ms, ms, seq, sample.vision_seq,
                 sample.control_tick_ms, sample.control_x, sample.control_v,
                 sample.target_v,

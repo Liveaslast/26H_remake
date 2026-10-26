@@ -26,8 +26,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "DebugCommand.h"
-#include "VisionFrame.h"
-#include "BallStateEstimate.h"
 
 /* USER CODE END Includes */
 
@@ -90,16 +88,6 @@ osMessageQueueId_t DebugCommandHandle;
 const osMessageQueueAttr_t DebugCommand_attributes = {
   .name = "DebugCommand"
 };
-/* Definitions for VisionFrameQueue */
-osMessageQueueId_t VisionFrameQueueHandle;
-const osMessageQueueAttr_t VisionFrameQueue_attributes = {
-  .name = "VisionFrameQueue"
-};
-/* Definitions for BallStateQueue */
-osMessageQueueId_t BallStateQueueHandle;
-const osMessageQueueAttr_t BallStateQueue_attributes = {
-  .name = "BallStateQueue"
-};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -140,11 +128,7 @@ void MX_FREERTOS_Init(void) {
   /* creation of DebugCommand */
   DebugCommandHandle = osMessageQueueNew (16, sizeof(DebugCommand_t), &DebugCommand_attributes);
 
-  /* creation of VisionFrameQueue */
-  VisionFrameQueueHandle = osMessageQueueNew (16, sizeof(VisionFrame_t), &VisionFrameQueue_attributes);
 
-  /* creation of BallStateQueue */
-  BallStateQueueHandle = osMessageQueueNew (8, sizeof(BallStateEstimate_t), &BallStateQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

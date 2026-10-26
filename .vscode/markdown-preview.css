@@ -1,0 +1,45 @@
+/* Workspace preview only; does not change editor or GitHub typography. */
+html,
+body {
+    font-size: 18px !important;
+    line-height: 1.6 !important;
+}
+
+body code,
+body pre,
+body pre code,
+body pre code *,
+body .hljs {
+    font-size: 1em !important;
+    line-height: 1.6 !important;
+}
+
+body pre,
+body pre code,
+body pre code > div {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+body pre code {
+    display: block;
+    max-width: 100%;
+}
+
+body table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+    html {
+        padding: 0;
+    }
+
+    body {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+}

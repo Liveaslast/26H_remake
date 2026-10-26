@@ -1,0 +1,2 @@
+# Keep Pi deployment bytes identical on Windows and Linux (including shell scripts).
+26H_Remake_Raspderry/** text=auto eol=lf
