@@ -1,4 +1,4 @@
-# 项目协作约定
+# Agent协作约定
 
 适用于整个仓库。先读 [README](README.md) 和 [ARCHITECTURE](ARCHITECTURE.md)，再读改动所属工程的 README 与实际源码；历史交接仅作为当时证据，不作为当前实现规范。
 
@@ -22,8 +22,8 @@
 | CSV 采集协调、行整理、后台写盘 | Pi `recording/` |
 | 画面、终端、网页、图传 | Pi `interfaces/` |
 | 相机访问、串口参数 | Pi `hardware/`；串口字节驱动当前仍在 `communication/transport.py` |
-| 状态估计、控制算法、实际电机动作 | `26H_Remake_DJC/` |
-| 标定、训练、离线诊断和实验数据 | `26H_Remake_Support/` |
+| 状态估计、控制算法、实际电机动作 | STM32`26H_Remake_DJC/` |
+| 标定、训练、离线诊断和实验数据 | STM32`26H_Remake_Support/` |
 
 MCU目录边界：`APP/inc、src` 放RTOS调度与交接；`Application` 按 `Communication`、`BallBeam`、`MotorTest` 分组，各自配套 `inc、src`，分别放Pi通信业务、球杆业务和裸机电机测试；`UserLib/inc、src` 只留不解释球杆业务的PID、电机控制等底层组件，不引用APP/Application业务头。不要因为代码已封装成类就放入UserLib，也不要在两处保留同名实现或兼容转发头。
 
@@ -44,7 +44,7 @@ MCU目录边界：`APP/inc、src` 放RTOS调度与交接；`Application` 按 `Co
 - 不改历史原始数据或重写当次结论。明确“可选”“默认启用”“已部署”“已实测”的差别。
 - 未经用户明确授权，不连接设备、不上传、不烧录、不启动电机。不要把 Pi 退出或 CSV 到时描述为 MCU 停机。
 
-## 离线检查入口
+## 离线检查入口(PS:没检查这部分，agent可能做一些过度的检测在这里面，导致处理时间变长，实际使用需要注意)
 
 在 `26H_Remake_Raspderry` 目录执行：
 
